@@ -1,4 +1,4 @@
-# 06 – Installing a modified `content.kzb` through the SD update (SWDL)
+# 06: Installing a modified `content.kzb` through the SD update (SWDL)
 
 Tools: [`tools/swdl/build_package.py`](../tools/swdl/build_package.py) builds the card,
 [`tools/swdl/install.sh`](../tools/swdl/install.sh) is the installer that runs on the unit.
@@ -39,8 +39,8 @@ Destination = "/HBpersistence/SWDL/Log/service/CarLook"   # only a tiny marker f
 ```
 
 Notes from our runs:
-- `metainfo2.txt` with **CRLF** line endings (like M.I.B./mib-cluster-map) – that's the layout we tested.
-- If any checksum is wrong, the menu refuses the package – nothing happens on the unit.
+- `metainfo2.txt` with **CRLF** line endings (like M.I.B./mib-cluster-map): that's the layout we tested.
+- If any checksum is wrong, the menu refuses the package: nothing happens on the unit.
 - The update copies only the small `version/CarLook` marker. The real work (the 51 MB file) is done by the
   FinalScript → `install.sh`, with our own checks.
 - Choose "Cancel" when asked about "Version back documentation", then restart the MMI (hold power ~10 s).
@@ -51,7 +51,7 @@ Runs on the RCC, reaches the MMX through `/net/mmx`, uses only shell built-ins (
 
 1. Refuse to run on other software (`Current train = '...'` in `/net/rcc/dev/shmem/version.txt`).
 2. Mode: install, or **uninstall** if a file named `UNINSTALL*` sits in `CarLook/`.
-3. SHA1 of the file on the unit must be the **known original** (install) or **our file** (uninstall) –
+3. SHA1 of the file on the unit must be the **known original** (install) or **our file** (uninstall);
    anything else → abort, nothing changed. Already done → "nothing to do".
 4. Back up the original to `CarLook/backup/content.kzb.original` on the card (if not already there) and verify it.
 5. Verify size + SHA1 of the source file on the card.
@@ -62,7 +62,7 @@ Runs on the RCC, reaches the MMX through `/net/mmx`, uses only shell built-ins (
 9. Always remount `/mnt/app` read-only (trap on exit).
 10. Everything is logged to `CarLook/result.txt` on the card. Success line: `CARLOOK_OK`.
 
-`sha1sum` is not on the unit – put the QNX/ARM binary from M.I.B. (`apps/sbin/sha1sum`, GPL-2.0) into
+`sha1sum` is not on the unit: put the QNX/ARM binary from M.I.B. (`apps/sbin/sha1sum`, GPL-2.0) into
 `CarLook/bin/`. The builder does that for you.
 
 ## Building the card
@@ -73,7 +73,7 @@ python tools/swdl/build_package.py --orig work/content.kzb --new work/content_st
 ```
 
 - With `--cluster-map <unpacked mib-cluster-map release>` you get **one** card that installs mib-cluster-map
-  (their installer, unchanged) and then CarLook – this is the exact layout we ran in the car.
+  (their installer, unchanged) and then CarLook: this is the exact layout we ran in the car.
   The FinalScript skips the cluster-map part if the card already says `CLUSTERMAP_INSTALL_OK`.
 - Without it you get a CarLook-only card (same pattern, but that exact standalone layout was not run in our car).
 
@@ -81,7 +81,7 @@ Copy the folder contents to an empty FAT32 card, card in SD1, red menu → Updat
 Afterwards read `CarLook/result.txt`.
 
 **Uninstall:** move `CarLook/to_uninstall_move_this_file_up/UNINSTALL.txt` into `CarLook/` and run the update
-again → the original comes back (SHA1-checked). Keep this card – it holds the backup of your original.
+again → the original comes back (SHA1-checked). Keep this card: it holds the backup of your original.
 
 ## Testing without a car
 

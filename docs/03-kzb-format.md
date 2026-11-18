@@ -1,4 +1,4 @@
-# 03 – The Kanzi `.kzb` format (as used in `content.kzb` on MIB2 High)
+# 03: The Kanzi `.kzb` format (as used in `content.kzb` on MIB2 High)
 
 No public tool reads these files, so we decoded what we needed by hand. Everything below was verified on
 `content.kzb` from `MHI2_ER_AU57x_K3663_1` (Audi A6/A7 C7.5): all 135 meshes can be parsed and rebuilt
@@ -21,7 +21,7 @@ file:    u32 offset, u32 size, u32 type, u32 flags, u16 nameLen, name, pad to 4
 ```
 
 Our file: 1203 folders, 5633 files, data from 0x3ca80 to the end, no gaps.
-Files are addressed by their **1-based index in directory order** – that number is what other objects
+Files are addressed by their **1-based index in directory order**: that number is what other objects
 store as a reference (`kzb_dir.json` keeps the list in that order: index = position + 1).
 
 File types we identified:
@@ -31,7 +31,7 @@ File types we identified:
 | 10 | image (embedded PNG) |
 | 110 | scene node (group / transform) |
 | 120 | mesh node (points to a mesh) |
-| 170 | placeholder / instance (points to another node – this is how the menu scenes pull in a car) |
+| 170 | placeholder / instance (points to another node: this is how the menu scenes pull in a car) |
 | 500 | mesh data |
 | 1121 | material |
 | 2020 | texture reference |
@@ -75,11 +75,11 @@ tail: 8 zero bytes, 6 floats bounding box (min xyz, max xyz), 4 zero bytes
 
 The padding after attribute names is sometimes relative to the **absolute file offset**, so
 `kzbmesh.parse_auto()` tries both and only accepts a byte-exact rebuild. Positions are half floats (float16):
-precision is ~1 mm near the car – fine for moving parts around.
+precision is ~1 mm near the car, fine for moving parts around.
 
-Each sub-mesh uses one material – **recolouring a part = moving its triangles to another sub-mesh**,
+Each sub-mesh uses one material: **recolouring a part = moving its triangles to another sub-mesh**,
 or changing the material reference. Removing a part without changing sizes = make its triangles
-**degenerate** (all three indices the same) – they are not drawn.
+**degenerate** (all three indices the same): they are not drawn.
 
 ## 4. Images (type 10)
 
@@ -103,7 +103,7 @@ Material names like `/Materials/PhongTexturedCube/AU572_RS6_PA_Paint`.
 Scenes per model: `<model>_Geometry` (the actual car), `<model>_CarMenu_Leftsided/Rightsided`
 (car menu, left/right-hand drive) and `<model>_CharismaView_Left/Rightsided` (Audi drive select).
 The menu scenes do not contain geometry: their `CarRoot/Exterior_Left`, `Interior_Left`, `Reflection_Left` …
-are **type-170 placeholders that point into `<model>_Geometry`** – this is the hook for swapping the model
+are **type-170 placeholders that point into `<model>_Geometry`**: this is the hook for swapping the model
 ([docs/04](04-3d-car-model.md)).
 
 Interesting detail: the RS6 interior mesh is modelled as right-hand drive and contains its own steering wheel

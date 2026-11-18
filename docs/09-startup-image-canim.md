@@ -1,4 +1,4 @@
-# 09 – Boot animation (`.canim`)
+# 09: Boot animation (`.canim`)
 
 We decoded the format but kept the stock Audi boot animation in our car, so **nothing here was tested in the car.**
 

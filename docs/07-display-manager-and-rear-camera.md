@@ -1,15 +1,15 @@
-# 07 – Display manager (`dmdt`) and the rear camera in the cockpit
+# 07: Display manager (`dmdt`) and the rear camera in the cockpit
 
 Goal: show the **factory rear-view camera** in the virtual cockpit while reversing (some paid "cluster mods"
-advertise this). Result on our A6 C7.5: **the switching works, but the cockpit shows no picture** – the camera
+advertise this). Result on our A6 C7.5: **the switching works, but the cockpit shows no picture**: the camera
 is a hardware video layer. Below is everything we measured, so the next person can start where we stopped.
 
 > Measurements are from our car; the explanations are our best interpretation and may be wrong.
 
-Tools: [`tools/camera/`](../tools/camera/) – started via mib-cluster-map's green-menu entry
+Tools: [`tools/camera/`](../tools/camera/), started via mib-cluster-map's green-menu entry
 "Save logs to SD" (our modified `savelogs.sh` runs them when a flag file is on the card).
 
-## `dmdt` – the display manager tool
+## `dmdt`: the display manager tool
 
 ```
 cd /eso && LD_LIBRARY_PATH=/eso/lib:/lib:/usr/lib IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt <cmd>
@@ -43,8 +43,8 @@ The scan therefore runs in the background: press the button, close the green men
 (it only exists while the camera is shown). Other contexts with the camera: −2 (camera only) and 38 (HMI2 + camera).
 The camera stays on in D/P until you drive a bit or press the camera button (normal Audi behaviour).
 
-So **"is the camera on?" = "is display 0 on context 3?"** – no CAN or gear signal needed. Poll `dmdt gs` every
-1–2 s.
+So **"is the camera on?" = "is display 0 on context 3?"**: no CAN or gear signal needed. Poll `dmdt gs` every
+1-2 s.
 
 ## The test: put displayable 17 into the cockpit
 
@@ -55,8 +55,8 @@ camera on : dmdt dc 73 17 ; dmdt sc 4 73
 camera off: dmdt dc 73 <previous> ; dmdt sc 4 73
 ```
 
-Result in the car: the cockpit map **disappears** when reversing and **comes back** afterwards (2 cycles, logged)
-– but the cockpit only shows its **empty grid**. Reason: displayable 17 is of type **`stream`** with **0 buffers** –
+Result in the car: the cockpit map **disappears** when reversing and **comes back** afterwards (2 cycles, logged),
+but the cockpit only shows its **empty grid**. Reason: displayable 17 is of type **`stream`** with **0 buffers**:
 the camera picture is composed by hardware directly onto the centre display. The cockpit gets its picture from
 an encoder that reads the **buffers** of `window` displayables (like 33 or mib-cluster-map's player window).
 A stream layer has no buffer to read.
@@ -65,13 +65,13 @@ A stream layer has no buffer to read.
 
 Their feature lists (CarPlay in cluster, CarPlay mirror, videos in cluster, rear camera in cluster) all fit one
 technique: **a native QNX program that draws pictures into its own window displayable** and puts that window
-into context 73 – exactly what mib-cluster-map's player does for the phone map. For the camera such a program
+into context 73, exactly what mib-cluster-map's player does for the phone map. For the camera such a program
 would have to **grab the camera frames from the video input** (Tegra capture / video libraries on the MMX) and
 copy them into its window, switched on when display 0 goes to context 3.
 
 What that would need:
 - a QNX 6.5 ARM toolchain (mib-cluster-map builds native code, see their `tools/qnx_cc.sh`, and has a probe that
-  drives the Tegra video libraries directly: `tools/nvprobe`) – a good starting point,
+  drives the Tegra video libraries directly: `tools/nvprobe`), a good starting point,
 - finding which library/device on the MMX delivers the camera frames (a read-only scan of `/eso/lib`, `/usr/lib`,
   `/dev` for capture/video entries would be step 1),
 - many test rounds in the car. Risk is mostly a crashing test program (reboot fixes it) if it is started from the
@@ -97,15 +97,15 @@ We asked in [mib-cluster-map #147](https://github.com/MacsInSpace/mib-cluster-ma
 **So the choice is:** write (and carefully test) such a native capture program yourself, with the mib-cluster-map
 sources and their QNX toolchain as the best starting point, or do without the camera in the cockpit.
 
-We stopped here. **Important limit:** the cockpit shows MMI pictures **only in its navigation tab** – the other
+We stopped here. **Important limit:** the cockpit shows MMI pictures **only in its navigation tab**: the other
 tabs are drawn by the instrument cluster itself. Paid solutions have the same limit (their camera/video also
 only appears in the nav tab).
 
 ## Files
 
-- `camera_scan.sh` – read-only, background, 20 s delay, then `dmdt gs` every 2 s for 100 s; on change also
+- `camera_scan.sh`: read-only, background, 20 s delay, then `dmdt gs` every 2 s for 100 s; on change also
   `gd`/`gc`. Output `Camera/scan_N/timeline.txt` + `changed_*.txt` on the card.
-- `camera_to_cockpit_test.sh` – the RAM-only switch test above. Output `Camera/test_N/log.txt`.
-- `savelogs.sh` – replaces mib-cluster-map's `ClusterMap/GEM/savelogs.sh`: runs the test if `Camera/TEST_ACTIVE.txt`
+- `camera_to_cockpit_test.sh`: the RAM-only switch test above. Output `Camera/test_N/log.txt`.
+- `savelogs.sh`: replaces mib-cluster-map's `ClusterMap/GEM/savelogs.sh`: runs the test if `Camera/TEST_ACTIVE.txt`
   exists, else the scan if `Camera/SCAN_ACTIVE.txt` exists, else the original "save logs". Put the scripts in
   a `Camera/` folder on the card.

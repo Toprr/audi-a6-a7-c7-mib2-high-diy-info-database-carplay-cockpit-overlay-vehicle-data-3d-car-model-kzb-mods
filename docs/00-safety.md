@@ -1,6 +1,6 @@
-# 00 – Safety first: how not to brick your MIB2 High
+# 00: Safety first: how not to brick your MIB2 High
 
-> **Read this first:** this is information, not a product. You can do a lot wrong – see [README](../README.md#audi-mib2-high-c7-a6--a7--diy-carplay-map-in-the-virtual-cockpit-custom-3d-car-model-car-menu-icon-rear-camera-research). Your own risk.
+> **Read this first:** this is information, not a product. You can do a lot wrong, see the [README](../README.md). Your own risk.
 
 What we did on our car, in this order:
 
@@ -17,7 +17,7 @@ What we did on our car, in this order:
 4. **Have the rollback ready before you install:** the same package with `UNINSTALL.txt` moved one folder up
    puts the original back (also SHA1-checked).
 5. Charger on, ignition on, engine off, don't drive, don't open doors repeatedly (the unit may sleep).
-6. Display-manager experiments (`dmdt`) are RAM-only – a reboot (hold the power/volume knob ~10 s) resets them.
+6. Display-manager experiments (`dmdt`) are RAM-only: a reboot (hold the power/volume knob ~10 s) resets them.
 
 What can go wrong and how bad it is:
 

@@ -1,7 +1,7 @@
 # tools
 
 Python 3 on the PC (`pip install numpy opencv-python moderngl`), ksh on the unit.
-Set `MIB_WORK` to a folder that contains **your own** `content.kzb` (from an M.I.B. backup) – intermediate files go there too.
+Set `MIB_WORK` to a folder that contains **your own** `content.kzb` (from an M.I.B. backup): intermediate files go there too.
 
 | folder | what | docs |
 |---|---|---|
@@ -25,5 +25,5 @@ python swdl/build_package.py --orig $MIB_WORK/content.kzb --new $MIB_WORK/conten
 ```
 
 On the original K3663 file this reproduces our installed file byte for byte (SHA1 `674a2ef4c80dcee898dec2c6ff439c6d7f5a6b10`).
-The design-specific numbers (which triangles are "rings", wheel positions, colours) are for the RS6 Avant model –
+The design-specific numbers (which triangles are "rings", wheel positions, colours) are for the RS6 Avant model;
 adapt them for other models and keep the `assert`s.

@@ -1,4 +1,4 @@
-# archive – earlier design iterations
+# archive: earlier design iterations
 
 These are the design steps before the final design in [`../design.py`](../design.py), kept as examples.
 They are **not maintained** and not needed for anything in the car.

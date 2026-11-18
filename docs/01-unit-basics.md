@@ -1,4 +1,4 @@
-# 01 – MIB2 High basics (Audi C7 / C7.5)
+# 01: MIB2 High basics (Audi C7 / C7.5)
 
 Tested unit: Audi A6 Avant C7.5 2018, hardware **MU1425**, software train **`MHI2_ER_AU57x_K3663_1`**
 (AU57x = the same software for A6 C7 (AU571 saloon / AU572 Avant/allroad) and A7 (AU573)).
@@ -30,7 +30,7 @@ The SD card is mounted on the MMX as `/fs/sda0` (slot SD1) or `/fs/sdb0` (SD2), 
 | `/mnt/app/eso/content.kzb` | Kanzi asset package: 3D car models (all C7 variants), materials, scenes, many UI images incl. the main-menu "Car" icon. ~51 MB. Read-only mount (`mount -uw /mnt/app` to change) |
 | `/mnt/app/eso/hmi/splashscreen/*.canim` + `StartupImageConfig.txt` | boot animations ([docs/09](09-startup-image-canim.md)) |
 | `/mnt/app/eso/hmi/lsd/lsd.jxe` | the Java HMI |
-| `/net/rcc/dev/shmem/version.txt` | contains `Current train = '...'` – use it to make scripts refuse to run on other software |
+| `/net/rcc/dev/shmem/version.txt` | contains `Current train = '...'`: use it to make scripts refuse to run on other software |
 | `/eso/bin/apps/dmdt` | display manager tool ([docs/07](07-display-manager-and-rear-camera.md)) |
 
 ## Tools that are NOT on the unit (learned the hard way)
@@ -45,7 +45,7 @@ The SD card is mounted on the MMX as `/fs/sda0` (slot SD1) or `/fs/sdb0` (SD2), 
 ## Getting `content.kzb` from your own car
 
 M.I.B. → Backup → advanced → *app.img to folder structure*. Afterwards it is in the backup on the SD card under
-`.../<hardware>-appimg/eso/content.kzb`. Note its SHA1 – every tool here wants the untouched original.
+`.../<hardware>-appimg/eso/content.kzb`. Note its SHA1: every tool here wants the untouched original.
 Our original (K3663, A6/A7 C7.5) was `cb7ecbbba8ebb6d79c5eeb7af6edcabde9db155a`, 53 066 629 bytes.
-If yours differs, the offsets in the scripts may differ too – the scripts look things up by path and
+If yours differs, the offsets in the scripts may differ too: the scripts look things up by path and
 assert what they expect, so they stop instead of writing garbage.

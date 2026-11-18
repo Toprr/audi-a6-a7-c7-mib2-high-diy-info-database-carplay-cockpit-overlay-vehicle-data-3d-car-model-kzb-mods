@@ -1,6 +1,6 @@
-# 05 – Replacing the "Car" icon in the main menu
+# 05: Replacing the "Car" icon in the main menu
 
-The little car in the MMI main menu ("Car" / "Fahrzeug") is **not** a 3D scene – it's two PNG images inside
+The little car in the MMI main menu ("Car" / "Fahrzeug") is **not** a 3D scene: it's two PNG images inside
 `content.kzb`:
 
 | Index | Path | Size in file |
@@ -8,7 +8,7 @@ The little car in the MMI main menu ("Car" / "Fahrzeug") is **not** a 3D scene �
 | 4989 | `/Resource Files/Images/WizardIcons/Main Wizard/2D/d4_wizard_maingroups_car_enabled.png` | 7482 bytes |
 | 4990 | `/Resource Files/Images/WizardIcons/Main Wizard/2D/d4_wizard_maingroups_car_highlighted.png` | 8329 bytes |
 
-(indices from our K3663 file – find yours by path in `kzb_dir.json`). Both are **65×48 RGBA**. *enabled* = normal state (white car),
+(indices from our K3663 file, find yours by path in `kzb_dir.json`). Both are **65×48 RGBA**. *enabled* = normal state (white car),
 *highlighted* = selected (dark parts tinted red). Transparent background; the car
 sits at the bottom of the canvas.
 
