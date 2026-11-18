@@ -1,0 +1,4 @@
+*.sh text eol=lf
+metainfo2_template.txt text eol=lf
+*.py text eol=lf
+*.jpg binary
