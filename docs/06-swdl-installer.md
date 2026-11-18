@@ -68,7 +68,7 @@ Runs on the RCC, reaches the MMX through `/net/mmx`, uses only shell built-ins (
 ## Building the card
 
 ```
-python tools/swdl/build_package.py --orig work/content.kzb --new work/content_stufe2.kzb \
+python tools/swdl/build_package.py --orig work/content.kzb --new work/content_stage2.kzb \
     --sha1sum <M.I.B.>/apps/sbin/sha1sum --train MHI2_ER_AU57x_K3663_1 --out SD_CARLOOK --name "My CarLook"
 ```
 

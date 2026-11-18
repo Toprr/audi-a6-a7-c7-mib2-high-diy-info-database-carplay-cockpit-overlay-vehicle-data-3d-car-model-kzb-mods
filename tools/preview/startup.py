@@ -1,3 +1,5 @@
+# Design only: renders the car from design.py as an 800x480 startup picture + a 120x72 car icon.
+# usage: python startup.py [out folder, default MIB_WORK]   (fonts: Windows Bahnschrift/Arial, PIL default font elsewhere)
 import os as _os, sys as _sys
 WORK = _os.environ.get("MIB_WORK", "work")  # folder with content.kzb, kzb_dir.json and intermediate files
 _HERE = _os.path.dirname(_os.path.abspath(__file__))
@@ -5,10 +7,15 @@ for _p in (_HERE, _os.path.join(_HERE, "..", "kzb"), _os.path.join(_HERE, "..", 
 import sys, numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFont
 
-from build_v9 import build
+from design import build
 from glrender import render
 W,H=800,480; SS=3
 sc=build()
+def font(name,size):
+    for p in (name, _os.path.join(_os.environ.get("WINDIR","C:/Windows"),"Fonts",name)):
+        try: return ImageFont.truetype(p,size)
+        except OSError: pass
+    return ImageFont.load_default(size)
 def studio(w,h):
     y,x=np.mgrid[0:h,0:w].astype(np.float32)
     r=np.hypot((x-w*0.40)/(w*0.65),(y-h*0.42)/(h*0.75))
@@ -36,7 +43,7 @@ def startup():
         cxk=x0+k*int(38*SS)
         for j,col in enumerate(((95,95,100),(205,205,210),(150,150,155))):
             rr=R-j*int(1.2*SS); d.ellipse([cxk-rr,y0-rr,cxk+rr,y0+rr],outline=col,width=max(1,t-j*int(1.5*SS)))
-    f1=ImageFont.truetype("C:/Windows/Fonts/bahnschrift.ttf",int(54*SS)); f2=ImageFont.truetype("C:/Windows/Fonts/arial.ttf",int(15*SS))
+    f1=font("bahnschrift.ttf",int(54*SS)); f2=font("arial.ttf",int(15*SS))
     mid=x0+int(57*SS)
     d.text((mid,int(262*SS)),"A6",font=f1,fill=(210,210,214),anchor="ma")
     txt1,txt2="Audi"," MMI Navigation plus"; w1=d.textlength(txt1,font=f2); w2=d.textlength(txt2,font=f2)
@@ -49,16 +56,15 @@ def car_icon(size=(120,72)):
     canvas[y:y+lay.shape[0],x:x+lay.shape[1]]=lay
     return cv2.resize(canvas,size,interpolation=cv2.INTER_AREA)
 if __name__=="__main__":
-    st=startup(); cv2.imwrite(sys.argv[1]+r"\startup_800x480.png",st)
-    ic=car_icon(); cv2.imwrite(sys.argv[1]+r"\car_icon_120x72.png",ic)
+    out=sys.argv[1] if len(sys.argv)>1 else WORK; _os.makedirs(out,exist_ok=True)
+    st=startup(); cv2.imwrite(_os.path.join(out,"startup_800x480.png"),st)
+    ic=car_icon(); cv2.imwrite(_os.path.join(out,"car_icon_120x72.png"),ic)
     # menu preview: icon on a black menu crop, enlarged
     m=np.zeros((480,800,3),np.uint8); m[:]=12
     a=ic[:,:,3:4]/255.0; big=cv2.resize(ic,(240,144),interpolation=cv2.INTER_CUBIC); ab=big[:,:,3:4]/255.0
     m[160:304,280:520]=(m[160:304,280:520]*(1-ab)+big[:,:,:3]*ab).astype(np.uint8)
     m[60:132,60:180]=(m[60:132,60:180]*(1-a)+ic[:,:,:3]*a).astype(np.uint8)
     cv2.putText(m,"Car",(100,52),cv2.FONT_HERSHEY_SIMPLEX,0.7,(230,230,230),1,cv2.LINE_AA)
-    cv2.putText(m,"Originalgroesse ~120x72",(40,160),cv2.FONT_HERSHEY_SIMPLEX,0.45,(150,150,150),1,cv2.LINE_AA)
-    cv2.putText(m,"vergroessert",(350,330),cv2.FONT_HERSHEY_SIMPLEX,0.5,(150,150,150),1,cv2.LINE_AA)
-    cv2.imwrite(sys.argv[1]+r"\car_icon_vorschau.png",m)
-
-
+    cv2.putText(m,"actual size ~120x72",(40,160),cv2.FONT_HERSHEY_SIMPLEX,0.45,(150,150,150),1,cv2.LINE_AA)
+    cv2.putText(m,"enlarged",(350,330),cv2.FONT_HERSHEY_SIMPLEX,0.5,(150,150,150),1,cv2.LINE_AA)
+    cv2.imwrite(_os.path.join(out,"car_icon_preview.png"),m)

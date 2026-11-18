@@ -1,15 +1,19 @@
-# v9 preview design: RS6 Avant body (mesh 67), RS7 5-arm rims on the RS6 axles. Works on the OBJ files from kzb_extract.py (WORK/obj).
+# The final design as PC preview: RS6 Avant body (mesh 67), silver grey, 3.5 cm lower, RS7 5-arm rims on the RS6 axles,
+# red calipers, black trim, no badge. Works on the OBJ files from kzb_extract.py (WORK/obj).
+# The car does NOT run this: the installed file comes only from the carlook/stage*.py scripts, which apply a subset.
+# Honeycomb grille, black roof rails and the add-on parts (bodykit.py) are preview only.
+# carlook/make_menu_icon.py and startup.py render this full preview scene.
+# usage: python design.py out.jpg   (9 views)
 import os as _os, sys as _sys
 WORK = _os.environ.get("MIB_WORK", "work")  # folder with content.kzb, kzb_dir.json and intermediate files
 _HERE = _os.path.dirname(_os.path.abspath(__file__))
 for _p in (_HERE, _os.path.join(_HERE, "..", "kzb"), _os.path.join(_HERE, "..", "preview")): _sys.path.insert(0, _p)
 import sys, glob, numpy as np, cv2
 
-from render2 import load
-from composite4 import Scene
-from composite2 import ring_block
-from parts import surf_sampler2, rs_honeycomb
-from parts4 import front_wrap, skirts, rear_split
+from obj_preview import load
+from scene import Scene, ring_block
+from grille import surf_sampler2, rs_honeycomb
+from bodykit import front_wrap, skirts, rear_split
 f=lambda i: glob.glob(WORK+"/obj/%03d_*.obj"%i)[0]
 ZC=-0.335
 PAINT=(132,129,124)          # BGR: silver grey, slightly cooler than Tornado grey
@@ -66,16 +70,9 @@ def build(lower=0.035):
 if __name__=="__main__":
     from glrender import render
     sc=build()
-    views=[("Front",90,4),("vorne rechts",135,10),("rechte Seite",180,2),("hinten rechts",-135,10),
-           ("Heck",-90,6),("hinten links",-45,10),("linke Seite",0,2),("vorne links",45,10),("von oben",130,45)]
+    views=[("front",90,4),("front right",135,10),("right side",180,2),("rear right",-135,10),
+           ("rear",-90,6),("rear left",-45,10),("left side",0,2),("front left",45,10),("from above",130,45)]
     ims=[]
     for name,y,p in views:
         im=render(sc,y,p,W=960,H=540,zoom=(0.75 if p>40 else 1.0)); cv2.putText(im,name,(16,36),cv2.FONT_HERSHEY_SIMPLEX,1.0,(220,220,220),2,cv2.LINE_AA); ims.append(im)
     cv2.imwrite(sys.argv[1],np.vstack([np.hstack(ims[i:i+3]) for i in (0,3,6)]),[cv2.IMWRITE_JPEG_QUALITY,90])
-
-
-
-
-
-
-

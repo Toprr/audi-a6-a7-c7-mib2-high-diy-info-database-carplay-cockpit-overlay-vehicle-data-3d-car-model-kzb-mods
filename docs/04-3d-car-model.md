@@ -94,11 +94,11 @@ Then `tools/preview/render_from_kzb.py` renders the finished file from 9 angles 
 ## Pipeline we actually ran
 
 ```
-python tools/carlook/stage1_swap_model.py work/content.kzb work/content_stufe1.kzb work/kzb_dir.json
+python tools/carlook/stage1_swap_model.py work/content.kzb work/content_stage1.kzb work/kzb_dir.json
 python tools/carlook/make_menu_icon.py           # optional, see docs/05 (needs the preview builder)
-python tools/carlook/stage1b_menu_icon.py        # -> work/content_stufe1b.kzb
-python tools/carlook/stage2_lower_rims_calipers_black.py   # -> work/content_stufe2.kzb
-python tools/preview/render_from_kzb.py work/content_stufe2.kzb check.jpg
+python tools/carlook/stage1b_menu_icon.py        # -> work/content_stage1b.kzb
+python tools/carlook/stage2_lower_rims_calipers_black.py   # -> work/content_stage2.kzb
+python tools/preview/render_from_kzb.py work/content_stage2.kzb check.jpg
 ```
 
 With the original K3663 file this produces exactly the file running in our car
@@ -108,10 +108,19 @@ On other software versions the indices/offsets may differ – the scripts look e
 
 ## Designing on the PC first
 
-`tools/preview/` contains the preview builder we used to try designs before touching the file
-(`build_v9.py` = the RS6 design, `parts*.py` = honeycomb grille, front lip, side skirts, rear splitters,
-diffuser fins, `rotor.py` = a custom 5-arm rotor rim, `slicer.py` = cuts the body into slices so add-on parts
-follow the real body edges). It works on the OBJ files from `kzb_extract.py` (`MIB_WORK/obj`).
+`tools/preview/` contains the preview builder we used to try designs before touching the file.
+It works on the OBJ files from `kzb_extract.py` (`MIB_WORK/obj`):
+
+- `design.py` – the final RS6 design as PC preview; `python tools/preview/design.py out.jpg` renders 9 views.
+  The car (photos) runs a subset of it, made by the stage scripts: model swap + paint, lowering, RS7 rims, red calipers,
+  black exhaust tips/rings/trim, badge removed. Honeycomb grille, black roof rails, lip/skirts/splitters are preview only.
+  The menu icon (`carlook/make_menu_icon.py`) is rendered from this full preview scene.
+- `scene.py`, `glrender.py` – scene container and the GPU renderer
+- `grille.py` – RS honeycomb grille projected onto the body
+- `bodykit.py` – front lip, side skirts, rear splitters that follow the real body edges (preview only, see below)
+- `obj_preview.py` – OBJ loader + a quick contact sheet to find out which mesh number is which part
+- `archive/` – earlier design iterations (S6 body, diffuser fins, a custom 5-arm rotor rim). Not maintained,
+  kept as examples.
 Keep the polygon count low – the MMI's Tegra 3 renders this; smoothness comes from the normals, like the original.
 
 ## Not done (needs a bigger file)

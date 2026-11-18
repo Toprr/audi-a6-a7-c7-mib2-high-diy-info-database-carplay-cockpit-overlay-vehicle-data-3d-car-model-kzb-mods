@@ -1,13 +1,13 @@
 # Stage 2 - in-place edits only: same sizes, directory unchanged.
 # lower 3.5 cm, RS7 5-arm rims on the RS6 axles, red calipers, black exhaust tips / rings / trim, RS6 badge removed.
-# Input WORK/content_stufe1b.kzb + WORK/kzb_dir.json, output WORK/content_stufe2.kzb
+# Input WORK/content_stage1b.kzb + WORK/kzb_dir.json, output WORK/content_stage2.kzb
 import os as _os, sys as _sys
 WORK = _os.environ.get("MIB_WORK", "work")  # folder with content.kzb, kzb_dir.json and intermediate files
 _HERE = _os.path.dirname(_os.path.abspath(__file__))
 for _p in (_HERE, _os.path.join(_HERE, "..", "kzb"), _os.path.join(_HERE, "..", "preview")): _sys.path.insert(0, _p)
 import json,struct,sys,hashlib,numpy as np
 from kzbmesh import parse_auto, build
-d=bytearray(open(WORK+"/content_stufe1b.kzb","rb").read())
+d=bytearray(open(WORK+"/content_stage1b.kzb","rb").read())
 F=json.load(open(WORK+"/kzb_dir.json"))["files"]; P={f["path"]:(i+1,f) for i,f in enumerate(F)}
 ZC=-0.335; LOWER=0.035
 LOG=[]; REG=[]
@@ -94,6 +94,6 @@ mi,f=P["/Materials/PhongTextured/AU573_RS7_PA_BrakeDisc"]; a,b=blobrange(mi); bl
 for pid,val in ((0x60,(0.22,0.01,0.01)),(0x63,(1.0,0.06,0.05)),(0x67,(0.6,0.35,0.35))):
     k=blob.find(struct.pack("<III",0x20,pid,2)); assert k>0; p=a+k+16
     LOG.append("Material RS7_BrakeDisc prop %#x: %s -> %s"%(pid,[round(x,3) for x in struct.unpack_from("<3f",d,p)],val)); struct.pack_into("<3f",d,p,*val); REG.append((p,p+12))
-open(WORK+"/content_stufe2.kzb","wb").write(d); json.dump(REG,open(WORK+"/stufe2_regionen.json","w"))
+open(WORK+"/content_stage2.kzb","wb").write(d); json.dump(REG,open(WORK+"/stage2_regions.json","w"))
 for l in LOG: print(l)
 print("SHA1",hashlib.sha1(d).hexdigest(),"size",len(d))

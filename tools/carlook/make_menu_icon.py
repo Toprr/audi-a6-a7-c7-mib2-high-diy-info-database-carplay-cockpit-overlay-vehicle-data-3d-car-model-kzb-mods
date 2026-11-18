@@ -2,11 +2,11 @@ import os as _os, sys as _sys
 WORK = _os.environ.get("MIB_WORK", "work")  # folder with content.kzb, kzb_dir.json and intermediate files
 _HERE = _os.path.dirname(_os.path.abspath(__file__))
 for _p in (_HERE, _os.path.join(_HERE, "..", "kzb"), _os.path.join(_HERE, "..", "preview")): _sys.path.insert(0, _p)
-# Render the modified car (preview builder, tools/preview/build_v9.py) into the 65x48 main-menu icons.
+# Render the modified car (preview builder, tools/preview/design.py) into the 65x48 main-menu icons.
 # Output: WORK/icon_enabled.png, WORK/icon_highlighted.png, WORK/icon_compare.png (originals vs new, 5x)
 import sys, numpy as np, cv2
 
-from build_v9 import build
+from design import build
 from glrender import render
 sc=build()
 im=render(sc,90,4,W=1600,H=1200,ground=False,alpha=True,fov=12)
@@ -35,4 +35,3 @@ for img in (orig,kzb_png(ICON+"highlighted.png"),can,hl.astype(np.uint8)):
     bg=np.full(img.shape[:2]+(3,),20,np.uint8); al=img[:,:,3:4]/255.0; v=(img[:,:,:3]*al+bg*(1-al)).astype(np.uint8)
     T.append(cv2.resize(v,None,fx=5,fy=5,interpolation=cv2.INTER_NEAREST))
 cv2.imwrite(WORK+"/icon_compare.png",np.vstack([np.hstack(T[:2]),np.hstack(T[2:])]))
-
