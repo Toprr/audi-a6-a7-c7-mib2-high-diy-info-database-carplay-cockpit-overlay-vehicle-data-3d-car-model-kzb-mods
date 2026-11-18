@@ -83,6 +83,15 @@ is in [docs/07](docs/07-display-manager-and-rear-camera.md). Note: on this car, 
 cockpit by the MMI only appears in the cockpit's **navigation tab** – that is a limit of the instrument
 cluster as far as we can tell, and we know of no solution that gets around it.
 
+## Other interesting projects
+
+- [tfourj/MIB2-Patcher](https://github.com/tfourj/MIB2-Patcher) – patches for exactly this software train
+  (`MHI2_ER_AU57x_K3663_1`, A6/A7 C7): e.g. the steering-wheel star (joker) button skipping tracks in
+  CarPlay / Android Auto, freely assignable joker/voice button, TEL opens CarPlay, and detailed findings about
+  the cockpit display chain. Pointed out to us by a user in [issue #1](../../issues/1). **Not tested by us** –
+  it changes the Java HMI (`lsd.sh` / boot classpath), so read its docs and have a full backup + SSH first.
+  Worth a look for anyone interested in MMI modding.
+
 ## Credits
 
 - [MacsInSpace/mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map) – phone map on the digital cluster (GPL-3.0). All CarPlay-in-cockpit work is theirs.
