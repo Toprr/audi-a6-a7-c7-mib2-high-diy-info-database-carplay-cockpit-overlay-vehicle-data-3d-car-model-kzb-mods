@@ -77,6 +77,26 @@ What that would need:
 - many test rounds in the car. Risk is mostly a crashing test program (reboot fixes it) if it is started from the
   SD card and never installed.
 
+### Confirmed by the mib-cluster-map developer
+
+We asked in [mib-cluster-map #147](https://github.com/MacsInSpace/mib-cluster-map/issues/147). The developer
+[confirmed](https://github.com/MacsInSpace/mib-cluster-map/issues/147#issuecomment-6990932792) this picture:
+
+- The rear camera is **not a picture any program on the unit draws.** It goes straight from the camera input
+  onto the centre screen as a hardware video layer. That is why the cockpit encoder sees nothing.
+- A native program would be the way (he knows of no simpler one): open the **Tegra's video capture input**
+  itself and draw the frames into a window in context 73, like their player does with the phone map.
+- **The catch:** the factory camera software holds that capture input while reversing. A program would have to
+  share it and **give it back cleanly, otherwise the centre screen loses its rear camera.** That makes this a
+  safety-relevant mod, not just cosmetics.
+- **Drive modes** in the cockpit are a different thing again: that is the car's own data from the car network,
+  not a picture.
+- He does not plan to build it, and advises caution with **closed tools sold for crypto that patch the camera
+  path**, because there is no way to check what they change or how to undo it.
+
+**So the choice is:** write (and carefully test) such a native capture program yourself, with the mib-cluster-map
+sources and their QNX toolchain as the best starting point, or do without the camera in the cockpit.
+
 We stopped here. **Important limit:** the cockpit shows MMI pictures **only in its navigation tab** – the other
 tabs are drawn by the instrument cluster itself. Paid solutions have the same limit (their camera/video also
 only appears in the nav tab).
