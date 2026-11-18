@@ -8,8 +8,20 @@ you can do yourself for free.
 cluster · CarPlay map in cluster · Android Auto map in cluster · 3D car model · car look · drive select car ·
 content.kzb · Kanzi KZB format · car menu icon · rear view camera in cluster · dmdt display manager · SWDL SD update
 
-> ⚠️ You do this at your own risk. Everything here was done on ONE car with ONE software version.
-> Read [docs/00-safety.md](docs/00-safety.md) first. Make a full M.I.B. backup before you touch anything.
+> [!CAUTION]
+> **This repository is meant as information – a write-up of what we learned, in the hope it helps others.
+> It is not a ready-made product and not a step-by-step guarantee.**
+>
+> - You can do **a lot wrong** here. A wrong file on `/mnt/app`, a broken update package or a script that runs on
+>   the wrong software version can leave your MMI without graphics, in a crash loop, or worse – and fixing that
+>   may need SSH access, a dealer, or a replacement unit.
+> - Everything was done on **ONE car** (Audi A6 Avant C7.5, `MHI2_ER_AU57x_K3663_1`). Other cars, other
+>   software trains or other hardware can have different files, offsets and behaviour. Do **not** copy numbers,
+>   hashes or files from here onto your unit blindly.
+> - Nothing here is official, nothing is tested beyond our own car, and **you do it entirely at your own risk**.
+>   No warranty, no support obligation, no liability – see the [LICENSE](LICENSE).
+> - Only continue if you understand what each step does. Read [docs/00-safety.md](docs/00-safety.md) first,
+>   make a **full M.I.B. backup** (including the advanced app backup) and have a working rollback **before** you change anything.
 
 ## Result in the car
 

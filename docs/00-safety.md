@@ -1,5 +1,7 @@
 # 00 – Safety first: how not to brick your MIB2 High
 
+> **Read this first:** this is information, not a product. You can do a lot wrong – see [README](../README.md#audi-mib2-high-c7-a6--a7--diy-carplay-map-in-the-virtual-cockpit-custom-3d-car-model-car-menu-icon-rear-camera-research). Your own risk.
+
 What we did on our car, in this order:
 
 1. **Full backup with M.I.B.** ([Mr-MIBonk/M.I.B._More-Incredible-Bash](https://github.com/Mr-MIBonk/M.I.B._More-Incredible-Bash)):
