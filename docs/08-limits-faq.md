@@ -1,5 +1,8 @@
 # 08 – Limits and FAQ
 
+> **Note:** the answers below are our current understanding, not proven facts. "No" means: we found no way and it
+> is *probably* not possible – not that it is impossible. If you know better, please open an issue.
+
 **Can the cockpit show the satellite map?**
 No. The cockpit stream comes from the phone (CarPlay "instrument cluster" view); the iPhone app decides how it looks.
 The satellite setting of the main screen is not used there.
@@ -15,7 +18,7 @@ their own Android system.
 
 **CarPlay on an aftermarket tablet AND the MMI (for the cockpit map) at the same time?**
 No. The iPhone runs **one** CarPlay session. Wireless adapters relay that one session; a "splitter" would have to
-fake an Apple-authenticated head unit (MFi / FairPlay) – not possible. So: tablet CarPlay *or* cockpit map.
+fake an Apple-authenticated head unit (MFi / FairPlay) – as far as we know not possible. So: tablet CarPlay *or* cockpit map.
 A common setup is CarPlay on the tablet + Bluetooth audio to the car radio.
 
 **Aftermarket Android screens with an LVDS box (C7 MHI2)**

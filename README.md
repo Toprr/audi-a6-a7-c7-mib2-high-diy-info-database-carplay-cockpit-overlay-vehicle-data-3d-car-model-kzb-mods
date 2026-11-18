@@ -20,6 +20,12 @@ content.kzb · Kanzi KZB format · car menu icon · rear view camera in cluster 
 >   hashes or files from here onto your unit blindly.
 > - Nothing here is official, nothing is tested beyond our own car, and **you do it entirely at your own risk**.
 >   No warranty, no support obligation, no liability – see the [LICENSE](LICENSE).
+> - **Not everything written here has to be right.** Only what we actually tested in our car is confirmed
+>   (marked "tested" / "works"). Explanations of *why* something works or doesn't are our best understanding,
+>   not proven facts.
+> - When we write that something **"doesn't work" or "isn't possible"**, it means **we** didn't find a way and,
+>   from what we know, it is *probably* not possible – not that it is impossible. Someone with more knowledge
+>   or other tools may well manage it. Corrections and better findings are very welcome (issues / pull requests).
 > - Only continue if you understand what each step does. Read [docs/00-safety.md](docs/00-safety.md) first,
 >   make a **full M.I.B. backup** (including the advanced app backup) and have a working rollback **before** you change anything.
 
@@ -45,8 +51,8 @@ no badge – and a matching car in the main-menu icon. Everything is generated b
 | **Custom 3D car model** (car menu + Audi drive select) | ✅ works | Our tools: swap the model (e.g. A6 → RS6), paint colour, lower the car, swap rims, red calipers, black exhaust tips/rings/trim, remove badges. See [docs/04](docs/04-3d-car-model.md) |
 | **Custom "Car" icon in the main menu** | ✅ works | Replace two PNGs inside `content.kzb` with the exact same byte length. See [docs/05](docs/05-car-menu-icon.md) |
 | Safe installer for `content.kzb` via SD update | ✅ works | SHA1-checked install + automatic backup + one-click uninstall. See [docs/06](docs/06-swdl-installer.md) |
-| Rear camera in the cockpit | ❌ not with scripts | The switching works, but the camera is a hardware video layer the cluster can't see. Needs a native capture program. Full research: [docs/07](docs/07-display-manager-and-rear-camera.md) |
-| Satellite map in the cockpit, sharper CarPlay, touch, two CarPlay screens | ❌ impossible | Hardware / Apple limits, explained in [docs/08](docs/08-limits-faq.md) |
+| Rear camera in the cockpit | ❌ not with scripts (as far as we know) | The switching works, but the camera seems to be a hardware video layer the cluster can't see. Probably needs a native capture program. Full research: [docs/07](docs/07-display-manager-and-rear-camera.md) |
+| Satellite map in the cockpit, sharper CarPlay, touch, two CarPlay screens | ❌ not possible as far as we know | Most likely hardware / Apple limits, see [docs/08](docs/08-limits-faq.md) |
 
 ## Contents
 
@@ -75,7 +81,7 @@ for around 100–150 EUR, often paid in crypto. The CarPlay-map part is availabl
 and the car-look part is documented here. What we found about how the rear-camera feature probably works
 is in [docs/07](docs/07-display-manager-and-rear-camera.md). Note: on this car, **everything** shown in the
 cockpit by the MMI only appears in the cockpit's **navigation tab** – that is a limit of the instrument
-cluster, no seller can change it.
+cluster as far as we can tell, and we know of no solution that gets around it.
 
 ## Credits
 

@@ -4,6 +4,8 @@ Goal: show the **factory rear-view camera** in the virtual cockpit while reversi
 advertise this). Result on our A6 C7.5: **the switching works, but the cockpit shows no picture** – the camera
 is a hardware video layer. Below is everything we measured, so the next person can start where we stopped.
 
+> Measurements are from our car; the explanations are our best interpretation and may be wrong.
+
 Tools: [`tools/camera/`](../tools/camera/) – started via mib-cluster-map's green-menu entry
 "Save logs to SD" (our modified `savelogs.sh` runs them when a flag file is on the card).
 
