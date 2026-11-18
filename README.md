@@ -88,8 +88,8 @@ cluster as far as we can tell, and we know of no solution that gets around it.
 - [tfourj/MIB2-Patcher](https://github.com/tfourj/MIB2-Patcher) – patches for exactly this software train
   (`MHI2_ER_AU57x_K3663_1`, A6/A7 C7): e.g. the steering-wheel star (joker) button skipping tracks in
   CarPlay / Android Auto, freely assignable joker/voice button, TEL opens CarPlay, and detailed findings about
-  the cockpit display chain. Pointed out to us by a user in [issue #1](../../issues/1). **Not tested by us** –
-  it changes the Java HMI (`lsd.sh` / boot classpath), so read its docs and have a full backup + SSH first.
+  the cockpit display chain. Pointed out to us by a user in [issue #1](../../issues/1). **Not tested by us – listed
+  only as information, hoping it helps.** It changes the Java HMI (`lsd.sh` / boot classpath), so read its docs and have a full backup + SSH first.
   Worth a look for anyone interested in MMI modding.
 
 ## Credits
