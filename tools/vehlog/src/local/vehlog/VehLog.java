@@ -1,0 +1,328 @@
+package local.vehlog;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.lang.reflect.Method;
+
+import org.dsi.ifc.base.DSIBase;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+
+/**
+ * VehLog: a read-only logger for oil temperature, coolant temperature and speed
+ * on MHI2_ER_AU57x_K3663_1. It only listens (DSI setNotification), it never
+ * sends anything to the car. Everything runs in one low-priority daemon thread,
+ * every step is inside try/catch Throwable, and any failure just stops the logger.
+ *
+ * Started once by the replaced org.dsi.ifc.global.CarViewOption.
+ * Boot guard: lsd.sh leaves /mnt/persist/vehlog_pending before the HMI starts;
+ * this class deletes it after the HMI has run for a while. A flag still there on
+ * the next start means that start failed, and lsd.sh no longer loads the jar.
+ * Off switch until the next start: touch /tmp/vehlog-off
+ *
+ * Java 1.2 level for the unit's J9: no StringBuilder, no boxing, no class literals.
+ */
+public final class VehLog implements Runnable {
+    static final String VERSION = "0.2";
+    private static final String FLAG_PENDING = "/mnt/persist/vehlog_pending";
+    private static final String FLAG_LOADED = "/mnt/persist/vehlog_loaded";
+    private static final String OFF = "/tmp/vehlog-off";
+    private static final String LOG = "/mnt/persist/vehlog.log";
+    private static final long MAX_BYTES = 524288L;          // stop writing after 512 KB
+    private static final long CONFIRM_AFTER_MS = 90000L;     // boot guard: HMI ran 90 s
+    private static final long FIRST_WAIT_MS = 20000L;        // let the HMI start first
+
+    private static final String DSI_KOMBI = "org.dsi.ifc.carkombi.DSICarKombi";
+    private static final String DSI_VEHICLE = "org.dsi.ifc.carvehiclestates.DSICarVehicleStates";
+    private static final int ATTR_BCVIEWOPTIONS = 4;
+    private static final int ATTR_BCOILTEMPERATURE = 30;
+    private static final int ATTR_BCCOOLANTTEMPERATURE = 63;
+    private static final int ATTR_BCOILTEMPERATUREVALUE = 64;
+    private static final int ATTR_DYNAMICVEHICLEINFOHIGHFREQUENT = 14;
+
+    private static final Object LOCK = new Object();
+    private static boolean started;
+
+    // Written by the listener callbacks (DSI threads), read by the logger thread
+    static volatile String oil = "-";
+    static volatile String coolant = "-";
+    static volatile String speed = "-";
+    static volatile String realSpeed = "-";
+    static volatile int rpm = -1;
+    static volatile String oilView = "-";
+    static volatile String oilSetting = "-";
+    static volatile int viewCount;
+    static volatile int oilCount;
+    static volatile int coolantCount;
+    static volatile int dynCount;
+    static volatile String lastError = null;
+
+    private static final StringBuffer pending = new StringBuffer();
+    private static long written;
+    private static boolean full;
+
+    private VehLog() {
+    }
+
+    /** Called from CarViewOption's constructors. Starts the thread once, never throws. */
+    public static void kick() {
+        try {
+            synchronized (LOCK) {
+                if (started) {
+                    return;
+                }
+                started = true;
+            }
+            if (new File(OFF).exists()) {
+                return;
+            }
+            Thread t = new Thread(new VehLog(), "VehLog");
+            t.setDaemon(true);
+            t.setPriority(Thread.MIN_PRIORITY);
+            t.start();
+        } catch (Throwable t) {
+            // nothing, the HMI goes on as stock
+        }
+    }
+
+    public void run() {
+        try {
+            long t0 = System.currentTimeMillis();
+            sleep(FIRST_WAIT_MS);
+            line("start VehLog " + VERSION);
+            boolean kombi = false;
+            boolean vehicle = false;
+            boolean confirmed = false;
+            int tries = 0;
+            String last = "";
+            long lastLine = 0L;
+            long lastStats = 0L;
+            while (true) {
+                if (new File(OFF).exists()) {
+                    line("off switch found, stopping");
+                    flush();
+                    return;
+                }
+                long now = System.currentTimeMillis();
+                if (!confirmed && now - t0 >= CONFIRM_AFTER_MS) {
+                    confirmed = true;
+                    confirm();
+                }
+                if ((!kombi || !vehicle) && tries < 60) {
+                    tries++;
+                    BundleContext bc = bundleContext();
+                    if (bc != null) {
+                        if (!kombi) {
+                            kombi = subscribe(bc, DSI_KOMBI,
+                                    new int[] {ATTR_BCVIEWOPTIONS, ATTR_BCOILTEMPERATURE, ATTR_BCCOOLANTTEMPERATURE, ATTR_BCOILTEMPERATUREVALUE},
+                                    new KombiListener());
+                        }
+                        if (!vehicle) {
+                            vehicle = subscribe(bc, DSI_VEHICLE,
+                                    new int[] {ATTR_DYNAMICVEHICLEINFOHIGHFREQUENT},
+                                    new VehicleListener());
+                        }
+                    }
+                    if (tries == 60 && (!kombi || !vehicle)) {
+                        line("gave up subscribing: kombi=" + kombi + " vehicle=" + vehicle);
+                    }
+                }
+                String err = lastError;
+                if (err != null) {
+                    lastError = null;
+                    line("listener error: " + err);
+                }
+                String values = "oil=" + oil + " coolant=" + coolant + " speed=" + speed
+                        + " realSpeed=" + realSpeed + " rpm=" + rpm + " | " + oilView + " bcOil=" + oilSetting;
+                if (!values.equals(last) || now - lastLine >= 30000L) {
+                    last = values;
+                    lastLine = now;
+                    line(values);
+                }
+                if (now - lastStats >= 60000L) {
+                    lastStats = now;
+                    line("updates so far: oil=" + oilCount + " coolant=" + coolantCount + " dyn=" + dynCount + " view=" + viewCount);
+                    flush();
+                }
+                if (pending.length() > 2048) {
+                    flush();
+                }
+                sleep(2000L);
+            }
+        } catch (Throwable t) {
+            try {
+                line("stopped: " + t);
+                flush();
+            } catch (Throwable ignored) {
+                // nothing
+            }
+        }
+    }
+
+    /** IFrameworkAccess of the car app, through reflection so a missing method is just an exception. */
+    private static BundleContext bundleContext() {
+        try {
+            Class menuCtrl = Class.forName("de.audi.app.car.MenuCtrl");
+            Object fw = menuCtrl.getMethod("getFramework", new Class[0]).invoke(null, new Object[0]);
+            if (fw == null) {
+                return null;
+            }
+            Class access = Class.forName("de.audi.atip.base.IFrameworkAccess");
+            Method m = access.getMethod("getBundleCxt", new Class[0]);
+            Object bc = m.invoke(fw, new Object[0]);
+            return (BundleContext) bc;
+        } catch (Throwable t) {
+            note("no framework yet: " + t);
+            return null;
+        }
+    }
+
+    private static boolean subscribe(BundleContext bc, String name, int[] attrs, Object listener) {
+        try {
+            ServiceReference ref = bc.getServiceReference(name);
+            if (ref == null) {
+                return false;
+            }
+            Object service = bc.getService(ref);
+            if (!(service instanceof DSIBase)) {
+                return false;
+            }
+            ((DSIBase) service).setNotification(attrs, (org.dsi.ifc.base.DSIListener) listener);
+            line("subscribed " + name);
+            return true;
+        } catch (Throwable t) {
+            line("subscribe " + name + " failed: " + t);
+            return false;
+        }
+    }
+
+    private static void confirm() {
+        try {
+            new File(FLAG_PENDING).delete();
+            FileOutputStream out = new FileOutputStream(FLAG_LOADED);
+            out.close();
+            line("boot guard confirmed");
+        } catch (Throwable t) {
+            line("boot guard confirm failed: " + t);
+        }
+        rearmTouchCursor();
+    }
+
+    /*
+     * 0.2: MIB2-Patcher's TOUCHCURSOR boot guard turns the patch off when the MMI is
+     * switched off or restarted within a minute of a start, even when nothing was wrong.
+     * This HMI start ran fine for CONFIRM_AFTER_MS, so if TOUCHCURSOR is disabled we
+     * remove its disabled flag (what its own "install" does with the flags) and it loads
+     * again on the next start. At most MAX_REARMS times in a row: if TOUCHCURSOR really
+     * broke the start, it stays off after that. The count goes back to 0 as soon as
+     * TOUCHCURSOR has had a good start (no pending and no disabled flag any more).
+     */
+    private static final String TC_PENDING = "/mnt/persist/touchcursor_pending";
+    private static final String TC_DISABLED = "/mnt/persist/touchcursor_disabled";
+    private static final String TC_REARMS = "/mnt/persist/vehlog_tc_rearms";
+    private static final int MAX_REARMS = 3;
+
+    private static void rearmTouchCursor() {
+        try {
+            boolean disabled = new File(TC_DISABLED).exists();
+            int n = readInt(TC_REARMS);
+            if (!disabled) {
+                if (n != 0 && !new File(TC_PENDING).exists()) {
+                    writeInt(TC_REARMS, 0);
+                    line("TOUCHCURSOR ok again, re-arm count reset");
+                }
+                return;
+            }
+            if (n >= MAX_REARMS) {
+                line("TOUCHCURSOR is disabled and was re-armed " + n + " times in a row, leaving it off");
+                return;
+            }
+            writeInt(TC_REARMS, n + 1);
+            if (new File(TC_DISABLED).delete()) {
+                line("TOUCHCURSOR was disabled by its boot guard, re-armed (" + (n + 1) + "/" + MAX_REARMS + "), active after the next start");
+            } else {
+                line("TOUCHCURSOR re-arm failed, could not delete " + TC_DISABLED);
+            }
+        } catch (Throwable t) {
+            line("TOUCHCURSOR re-arm error: " + t);
+        }
+    }
+
+    private static int readInt(String path) {
+        try {
+            java.io.FileInputStream in = new java.io.FileInputStream(path);
+            try {
+                byte[] b = new byte[16];
+                int len = in.read(b);
+                return len > 0 ? Integer.parseInt(new String(b, 0, len, "ISO-8859-1").trim()) : 0;
+            } finally {
+                in.close();
+            }
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    private static void writeInt(String path, int v) throws java.io.IOException {
+        FileOutputStream out = new FileOutputStream(path);
+        try {
+            out.write(String.valueOf(v).getBytes("ISO-8859-1"));
+        } finally {
+            out.close();
+        }
+    }
+
+    private static String lastNote = null;
+
+    /** Like line(), but the same text only once in a row. */
+    private static void note(String s) {
+        if (!s.equals(lastNote)) {
+            lastNote = s;
+            line(s);
+        }
+    }
+
+    static void line(String s) {
+        synchronized (pending) {
+            pending.append(System.currentTimeMillis() / 1000L).append(' ').append(s).append('\n');
+        }
+    }
+
+    private static void flush() {
+        String data;
+        synchronized (pending) {
+            data = pending.toString();
+            pending.setLength(0);
+        }
+        if (full || data.length() == 0) {
+            return;
+        }
+        try {
+            byte[] b = data.getBytes("ISO-8859-1");
+            if (written == 0L) {
+                written = new File(LOG).length();
+            }
+            if (written + b.length > MAX_BYTES) {
+                full = true;
+                b = (System.currentTimeMillis() / 1000L + " log full, stopped writing\n").getBytes("ISO-8859-1");
+            }
+            FileOutputStream out = new FileOutputStream(LOG, true);
+            try {
+                out.write(b);
+            } finally {
+                out.close();
+            }
+            written += b.length;
+        } catch (Throwable t) {
+            // logging is best effort
+        }
+    }
+
+    private static void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (Throwable t) {
+            // nothing
+        }
+    }
+}

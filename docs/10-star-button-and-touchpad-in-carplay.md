@@ -84,3 +84,25 @@ start".
   on the next start.
 - Use **Uninstall**, not **Restore**, when more than one patch is installed: Restore puts back the `lsd.sh` from
   before that patch's first install and can take other patches' lines with it (their README says the same).
+
+## Pitfall: the touchpad cursor is suddenly gone
+
+After a few days the CarPlay touchpad cursor stopped working on our car, the touchpad was back to stock.
+Nothing was broken: **TOUCHCURSOR's boot guard had switched it off.**
+
+- Its guard leaves a "pending" flag at every HMI start and removes it **after 60 seconds**. If the MMI is
+  restarted or switched off within that minute (unlock the car, the MMI starts, you leave again; or a quick
+  MENU + knob + upper right restart), the next start counts that as a failed start and TOUCHCURSOR stays off.
+- Check: green menu → MIB2_Patcher → TOUCHCURSOR → Status says **DISABLED** (flag
+  `/mnt/persist/touchcursor_disabled`).
+- Fix: same screen → **Install** (that re-arms it), restart the MMI, leave it on for a minute. Or the
+  `mod/command.sh` trick with `TOUCHCURSOR install`.
+- JOKERBTN behaves differently: its guard is confirmed as soon as its class is loaded.
+
+**Automatic re-arm (our own addition, optional):** our read-only logger
+[VehLog](11-vehicle-data-logger.md) also re-arms TOUCHCURSOR after such a false stop. Once an HMI start has
+run cleanly for 90 s and `touchcursor_disabled` exists, it deletes that flag, so TOUCHCURSOR loads again on
+the next start. It does this at most **3 times in a row**: if TOUCHCURSOR really broke the start, it stays off
+after that. The count goes back to 0 after TOUCHCURSOR's next good start. Tested on the PC; on our car the
+fix above brought TOUCHCURSOR back after exactly this kind of false stop. This changes another project's
+safety net, so only use it if you understand the trade-off.
