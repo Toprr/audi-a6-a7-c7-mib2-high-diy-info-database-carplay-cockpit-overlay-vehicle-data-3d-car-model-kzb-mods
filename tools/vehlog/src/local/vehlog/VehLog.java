@@ -23,11 +23,13 @@ import org.osgi.framework.ServiceReference;
  * Java 1.2 level for the unit's J9: no StringBuilder, no boxing, no class literals.
  */
 public final class VehLog implements Runnable {
-    static final String VERSION = "0.2";
+    static final String VERSION = "0.5";
     private static final String FLAG_PENDING = "/mnt/persist/vehlog_pending";
     private static final String FLAG_LOADED = "/mnt/persist/vehlog_loaded";
     private static final String OFF = "/tmp/vehlog-off";
     private static final String LOG = "/mnt/persist/vehlog.log";
+    /* 0.3: current speedometer value for the cockpit speed overlay (stream-player) */
+    private static final String SPEED_FILE = "/tmp/vehlog_speed";
     private static final long MAX_BYTES = 524288L;          // stop writing after 512 KB
     private static final long CONFIRM_AFTER_MS = 90000L;     // boot guard: HMI ran 90 s
     private static final long FIRST_WAIT_MS = 20000L;        // let the HMI start first
@@ -94,12 +96,14 @@ public final class VehLog implements Runnable {
             boolean vehicle = false;
             boolean confirmed = false;
             int tries = 0;
+            int catalogTries = 0;
             String last = "";
             long lastLine = 0L;
             long lastStats = 0L;
             while (true) {
                 if (new File(OFF).exists()) {
                     line("off switch found, stopping");
+                    Catalog.write(true);
                     flush();
                     return;
                 }
@@ -127,6 +131,16 @@ public final class VehLog implements Runnable {
                         line("gave up subscribing: kombi=" + kombi + " vehicle=" + vehicle);
                     }
                 }
+                // 0.4: catalog of every vehicle DSI, after the speed path is up and before the
+                // boot guard is confirmed (so a problem with it still trips the guard)
+                if (kombi && vehicle && catalogTries < 30) {
+                    catalogTries++;
+                    BundleContext bc = bundleContext();
+                    if (bc != null && Catalog.subscribeAll(bc) >= Catalog.SERVICES.length) {
+                        catalogTries = 30;
+                    }
+                }
+                Catalog.write(false);
                 String err = lastError;
                 if (err != null) {
                     lastError = null;
@@ -144,6 +158,7 @@ public final class VehLog implements Runnable {
                     line("updates so far: oil=" + oilCount + " coolant=" + coolantCount + " dyn=" + dynCount + " view=" + viewCount);
                     flush();
                 }
+                writeSpeed();
                 if (pending.length() > 2048) {
                     flush();
                 }
@@ -317,6 +332,58 @@ public final class VehLog implements Runnable {
             // logging is best effort
         }
     }
+
+    // 0.3: speed for the overlay. -1 = no valid value. Written on every change
+    // (from the DSI thread, a few bytes to /tmp, which is RAM) and every 2 s from
+    // the logger thread, so the player can tell a fresh value from an old one.
+    private static volatile int speedKmh = -1;
+    private static int speedWritten = -2;
+    private static final Object SPEED_LOCK = new Object();
+
+    static void speedNow(org.dsi.ifc.global.CarBCSpeed s) {
+        int v = -1;
+        if (s != null && s.speedValueState == 1 && s.speedUnit == 0 && s.speedValue >= 0f && s.speedValue < 400f) {
+            v = Math.round(s.speedValue);
+        }
+        speedKmh = v;
+        if (v != speedWritten) {
+            writeSpeed();
+        }
+    }
+
+    private static void writeSpeed() {
+        try {
+            synchronized (SPEED_LOCK) {
+                int v = speedKmh;
+                if (v < 0) {
+                    speedWritten = v;
+                    return;
+                }
+                // 0.5: written in place. 0.4 wrote a .tmp file and renamed it, and on the
+                // car /tmp/vehlog_speed never appeared (rename on the MMX's /tmp most
+                // likely not supported). The player tolerates a half-written file.
+                FileOutputStream out = new FileOutputStream(SPEED_FILE);
+                try {
+                    out.write((v + "\n").getBytes("ISO-8859-1"));
+                } finally {
+                    out.close();
+                }
+                speedWritten = v;
+                if (!speedOk) {
+                    speedOk = true;
+                    line("speed file written: " + SPEED_FILE + " (" + v + " km/h)");
+                }
+            }
+        } catch (Throwable t) {
+            if (!speedErr) {
+                speedErr = true;
+                line("speed file write failed: " + t);
+            }
+        }
+    }
+
+    private static boolean speedOk;
+    private static boolean speedErr;
 
     private static void sleep(long ms) {
         try {

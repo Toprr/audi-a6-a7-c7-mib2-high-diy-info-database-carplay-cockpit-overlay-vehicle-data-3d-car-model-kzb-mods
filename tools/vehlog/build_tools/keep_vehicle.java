@@ -8,6 +8,7 @@
             VehLog.speed = speed(d.vehicleSpeed);
             VehLog.realSpeed = speed(d.realVehicleSpeed);
             VehLog.rpm = d.engineSpeed;
+            VehLog.speedNow(d.vehicleSpeed);
         } catch (Throwable e) {
             VehLog.lastError = "dyn: " + e;
         }

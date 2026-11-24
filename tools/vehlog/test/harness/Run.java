@@ -20,7 +20,7 @@ public class Run {
                                     ((org.dsi.ifc.carkombi.DSICarKombiListener) l).updateBCOilTemperatureValue(new CarBCTemperature(1, 80f + i, 0), 1);
                                     ((org.dsi.ifc.carkombi.DSICarKombiListener) l).updateBCCoolantTemperature(i == 3 ? null : new CarBCTemperature(1, 90f, 0), 1);
                                     org.dsi.ifc.carkombi.BCViewOptions vo = new org.dsi.ifc.carkombi.BCViewOptions(); if (i == 2) vo.oilTemperatureValue = new CarViewOption(2, 1); ((org.dsi.ifc.carkombi.DSICarKombiListener) l).updateBCViewOptions(i == 4 ? null : vo, 1); ((org.dsi.ifc.carkombi.DSICarKombiListener) l).updateBCOilTemperature(i % 2 == 0, 1);
-                                } else {
+                                } else if (l instanceof org.dsi.ifc.carvehiclestates.DSICarVehicleStatesListener) {
                                     org.dsi.ifc.carvehiclestates.DynamicVehicleInfoHighFrequent d = new org.dsi.ifc.carvehiclestates.DynamicVehicleInfoHighFrequent();
                                     d.vehicleSpeed = new CarBCSpeed(1, 52f + i, 0); d.realVehicleSpeed = i == 5 ? null : new CarBCSpeed(1, 50f + i, 0); d.engineSpeed = 1500 + i;
                                     ((org.dsi.ifc.carvehiclestates.DSICarVehicleStatesListener) l).updateDynamicVehicleInfoHighFrequent(d, 1);
@@ -64,7 +64,7 @@ public class Run {
         for (int i = 0; i < 5; i++) new Thread() { public void run() { for (int k = 0; k < 1000; k++) { CarViewOption o = new CarViewOption(k, 2); if (o.getState() != k || o.getReason() != 2) System.out.println("TEST WRONG VALUE"); } } }.start();
         CarViewOption d = new CarViewOption();
         System.out.println("TEST toString " + d + " / " + new CarViewOption(3, 4));
-        Thread.sleep(70000);
+        Thread.sleep(100000);
         System.out.println("TEST subscriptions=" + subs + " threads named VehLog=" + count());
         System.exit(0);
     }

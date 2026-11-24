@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# VehLog 0.2: read-only logger for oil temperature, coolant temperature and speed
+# VehLog 0.5: read-only logger for oil temperature, coolant temperature and speed
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425) only.
 #
 # Usage: vehlog.sh <command>
@@ -19,7 +19,7 @@
 #
 # For tests on a PC: VEHLOG_TEST_ROOT=<folder> runs it against copies, no mounts.
 
-VERSION="0.2"
+VERSION="0.5"
 MARKER="#VEHLOG"
 JAR_NAME="VEHLOG.jar"
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
@@ -323,6 +323,12 @@ do_collect() {
 		cp "$UNIT_LOG" "$PKG/logs/vehlog_$n.log" && log "copied the log to vehlog/logs/vehlog_$n.log"
 	else
 		log "no log on the unit yet ($UNIT_LOG)"
+	fi
+	for pl in "$T/net/mmx/tmp/stream-player-carplay.log" "$T/net/mmx/tmp/stream-player.log"; do
+		[ -f "$pl" ] && cp "$pl" "$PKG/logs/${pl##*/}_$n" && log "copied ${pl##*/} to vehlog/logs/"
+	done
+	if [ -f "$PERSIST/vehlog_catalog.txt" ]; then
+		cp "$PERSIST/vehlog_catalog.txt" "$PKG/logs/catalog_$n.txt" && log "copied the catalog to vehlog/logs/catalog_$n.txt"
 	fi
 	do_status
 }

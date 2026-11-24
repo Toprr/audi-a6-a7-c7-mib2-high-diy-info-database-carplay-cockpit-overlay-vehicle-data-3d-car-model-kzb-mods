@@ -5,10 +5,10 @@ Written for and tested on `MHI2_ER_AU57x_K3663_1` (MU1425, `lsd.jxe` sha1 `2be47
 
 | Folder | What |
 |---|---|
-| `src/` | the jar: `org/dsi/ifc/global/CarViewOption` (stock class + one guarded start call), `local/vehlog/*` (logger, listeners) |
-| `sd/` | what goes on the M.I.B. SD card: `vehlog/vehlog.sh` (install, uninstall, status, collect, update) and `mod/command.sh` |
+| `src/` | the jar: `org/dsi/ifc/global/CarViewOption` (stock class + one guarded start call), `local/vehlog/*` (logger, listeners, `Catalog` = generic listener for 16 vehicle services) |
+| `sd/` | what goes on the M.I.B. SD card: `vehlog/vehlog.sh` (install, uninstall, status, collect, update), `vehlog/speedoverlay.sh` (overlay player install/uninstall), `vehlog/dmdt_snapshot.sh` (read-only display manager snapshot, needs mib-cluster-map's `lib/libdmdt_flush.so` next to it), `vehlog/speedoverlay.conf`, `vehlog/carplay_card.txt`, `mod/command.sh` |
 | `build_tools/` | `gen_listener.py` (writes the empty listener methods from `javap`), `check_refs.py` (every stock member we use exists and is public), the hand-written listener methods |
-| `test/` | PC tests with stand-ins: `harness.Run` (fake framework and DSI services), `harness.Rearm` (TOUCHCURSOR re-arm rules) |
+| `test/` | PC tests with stand-ins: `harness.Run` (fake framework and DSI services), `harness.Rearm` (TOUCHCURSOR re-arm rules), `harness.CatalogTest` (every listener method of every service) |
 
 ## Build (PC, JDK 8)
 
@@ -25,7 +25,7 @@ mkdir -p build/classes
 javac -source 1.2 -target 1.2 -nowarn -bootclasspath $LSD -d build/classes $(find src -name '*.java')
 (cd build/classes && jar cf0M ../VEHLOG.jar org local)
 python3 build_tools/check_refs.py javap build/classes $LSD org.dsi.ifc.global.CarViewOption \
-    local.vehlog.VehLog local.vehlog.KombiListener local.vehlog.VehicleListener
+    local.vehlog.VehLog local.vehlog.KombiListener local.vehlog.VehicleListener local.vehlog.Catalog 'local.vehlog.Catalog$Entry'
 sha1sum build/VEHLOG.jar | cut -d' ' -f1 > sd/vehlog/VEHLOG.jar.sha1 && cp build/VEHLOG.jar sd/vehlog/
 ```
 
@@ -39,6 +39,7 @@ Also compare `CarViewOption` with the stock class, for example with mib-cluster-
 
 - `/mnt/app/eso/hmi/lsd/jars/VEHLOG.jar`
 - a 15-line block marked `#VEHLOG` in front of the J9 start line of `lsd.sh` (backup: `lsd.sh.vehlog.bak`)
-- flags and the log in `/mnt/persist` (`vehlog_*`, `vehlog.log`)
+- flags, the log and the catalog in `/mnt/persist` (`vehlog_*`, `vehlog.log`, `vehlog_catalog.txt`, written only when something changed, at most once a minute)
+- `/tmp/vehlog_speed` (RAM): the current speedometer value for the speed overlay
 - optional TOUCHCURSOR re-arm: deletes `/mnt/persist/touchcursor_disabled` after a clean start, at most
   3 times in a row (counter `vehlog_tc_rearms`), see [docs/10](../../docs/10-star-button-and-touchpad-in-carplay.md)

@@ -1,0 +1,21 @@
+diff --git a/player/opengl_gpu.cc b/player/opengl_gpu.cc
+index 1e7e627..2b04ff7 100644
+--- a/player/opengl_gpu.cc
++++ b/player/opengl_gpu.cc
+@@ -497,6 +497,7 @@ static void* display_switch_thread(void* arg) {
+ #include <signal.h>
+ #include <sys/select.h>
+ #include <sys/wait.h>
++#include "speed_overlay.h" /* speed overlay (our addition) */
+ /*
+  * The settings hold the map window's size as the installer read it, and the
+  * display manager only lists the window once the cockpit has shown it, so that
+@@ -2295,6 +2296,8 @@ int main(int argc, char* argv[]) {
+                     LOGE("render: SHADER PATH FAILED -- GPU YUV requires shaders! (Screen is blank)");
+             }
+ 
++            speed_overlay_draw(windowWidth, windowHeight, now_us()); /* speed overlay (our addition) */
++
+ #ifdef __QNX__
+             if (!eglSwapBuffers(eglDisplay, eglSurface)) {
+                 EGLint err = eglGetError();

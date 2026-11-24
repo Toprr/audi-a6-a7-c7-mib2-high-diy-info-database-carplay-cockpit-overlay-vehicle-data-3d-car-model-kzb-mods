@@ -1,4 +1,4 @@
-# 11: Vehicle data in the HMI: speed yes, oil temperature no (VehLog)
+# 11: Vehicle data in the HMI: speed yes, oil temperature no (VehLog, catalog, speed overlay)
 
 Goal: show speed and oil temperature as a small bar over the CarPlay map in the cockpit. Before building
 anything that draws, we wanted to know **which values the MMI actually gets**. So we wrote VehLog, a small
@@ -30,6 +30,83 @@ Side notes:
 - The stock HMI does not even subscribe to attribute 64. Its board computer list in `BCProcessor` does not
   contain it, and the navigation's `updateBCOilTemperatureValue` is empty.
 - The log timestamps are seconds since the HMI start: the MMX has no real clock time at that point.
+
+## Everything else the car sends (VehLog 0.4 catalog)
+
+VehLog 0.4 listens to **every attribute of 16 vehicle DSI services** with one generic, read-only listener
+(`java.lang.reflect.Proxy`) and writes a catalog: which method was called, how often, and the newest value.
+Two drives of about 30 minutes: **717 methods called, 145 with a valid value, 37 of them changing while
+driving.** The full list (names, valid or not, live or once) is in
+[docs/12](12-vehicle-data-catalog.md). The useful ones:
+
+| Value | DSI method | On our car |
+|---|---|---|
+| Speedometer speed | `DSICarVehicleStates.updateDynamicVehicleInfoHighFrequent` | ✅ live (see above) |
+| Range | `DSICarKombi.updateBCCurrentRange1` | ✅ live, km |
+| Average consumption since start / long term | `DSICarKombi.updateBCShortTermAverageConsumption1` / `...LongTerm...` | ✅ live, l/100 km |
+| Trip since start: distance, average speed, time | `DSICarKombi.updateBCShortTermGeneral` | ✅ live |
+| Probably current consumption | `DSICarKombi.updateBCStatisticsTimeCurrentPeriodAC1` | ✅ very often (about once a second); unit code 1, meaning not confirmed yet |
+| Odometer | `DSICarKombi.updateBCTotalDistance` | ✅ live |
+| Clock, date, time source (GPS) | `DSICarTimeUnitsLanguage.updateClockTime` / `...ClockDate` | ✅ live |
+| **Reverse gear** | `DSIGeneralVehicleStates.updateReverseGear` | ✅ (useful for anything that should react to reversing) |
+| Vehicle standing still | `DSIGeneralVehicleStates.updateVehicleStandstill` | ✅ live |
+| Oil level and oil service due | `DSICarVehicleStates.updateOilLevelData`, `DSICarKombi.updateSIAOilInspection` | ✅ once |
+| Climate: set temperatures, fan per zone | `DSICarAirCondition.updateAirconTempZone1..4`, `...AirVolumeZone1..4` | ✅ live |
+| Drive select profile, light, comfort, assistance settings | `DSICarDrivingCharacteristics`, `DSICarLight`, `DSICarComfort`, `DSICarDriverAssistance` | ✅ once (settings) |
+| Units and language | `DSICarTimeUnitsLanguage.*Unit` | ✅ once |
+
+**Not delivered** on this car: oil and coolant temperature, engine speed, `realVehicleSpeed`, current gear,
+outside temperature (none of the 16 services carried a valid one).
+
+Notes:
+- Every DSI update ends with a valid flag (`1` valid, `2` invalid, `0` unknown). Most of the 717 methods only
+  sent one invalid value after subscribing: the function exists in the software, but not in this car.
+- Personal data is kept out: phone, messages, contacts, navigation, media and online services are not
+  subscribed at all, and methods with `VIN` or `Key` in the name are counted but their values are not stored.
+- More values only show up in their situation (parking aid, auxiliary heater, ...). The catalog keeps
+  growing with every drive.
+
+## Cockpit window: what is drawn by whom
+
+Read-only snapshots of the display manager (`dmdt gs`) during the drive, run from `mod/command.sh` on the MMX:
+
+| Cockpit shows | Context 73 contains |
+|---|---|
+| CarPlay map (mib-cluster-map) | only displayable `3` (the stream player's window) |
+| Audi navigation map | only displayable `33` (`DISPLAYABLE_KOMBI_MAP_VIEW`) |
+
+So the **street name label** at the bottom ("B16", "offroad") and the **traffic sign** at the top left are
+**not MMI windows**: the cluster draws them itself over whatever map it gets (the same answer the
+mib-cluster-map developer gave in their issue #126). They cannot be switched off by changing the display
+manager's contexts. The player's window is 800×298 pixels; on the C7 the rev counter covers about the
+left 180 pixels and the speedometer about the right 150.
+
+What can be moved: CarPlay's own maneuver card. mib-cluster-map (v1.2.6) has the setting
+`CLUSTERMAP_CARPLAY_CARD_POSITION=left|right|top`, stored on the unit as
+`/mnt/app/root/mibr-carplay111-nav.maneuverLayout` plus `/mnt/app/root/mibr-carplay111-nav-query.enabled`
+and read when the iPhone connects.
+
+## Speed overlay (work in progress)
+
+A small "52 km/h" box drawn by mib-cluster-map's stream player over the CarPlay map in the cockpit
+(sources: [`tools/speedoverlay/`](../tools/speedoverlay/)):
+
+- VehLog writes the speedometer value to `/tmp/vehlog_speed`; the player reads it a few times per second
+  and draws nothing when the file is missing or older than 6 s, so the map is never affected.
+- Built with the open QNX 6.5 toolchain ([luka-dev/qnx65-armv7-toolchain](https://github.com/luka-dev/qnx65-armv7-toolchain))
+  like mib-cluster-map. **Rebuilding the unchanged v1.2.6 player gave a byte-identical file** to the
+  released one (sha1 `0e38137f...`), so the build is reproducible. The overlay adds 3 lines to
+  `opengl_gpu.cc` plus one header, no new libraries.
+- **First car test: no box.** The player started the overlay, but `/tmp/vehlog_speed` never existed:
+  VehLog 0.4 wrote a temp file and renamed it, which most likely does not work on the MMX's `/tmp`.
+  VehLog 0.5 writes the file directly (PC-tested); the next car test is pending.
+- Position is set in `/mnt/persist/speedoverlay.conf` (`pos=bl|br|tl|tr`, `left=`, `right=`, `top=`,
+  `bottom=` in pixels), default bottom left at x=200 so the rev counter does not cover it.
+
+Building it on Windows needed a few workarounds, written down for the next person: clone the toolchain with
+`core.autocrlf=false` and feed `docker build` a `git archive` (Windows Git turns the toolchain's symlinks
+into text files), and build inside a Docker volume, not a Windows folder (the 32-bit QNX `ar` fails there
+with "Value too large for defined data type").
 
 ## How VehLog works
 
