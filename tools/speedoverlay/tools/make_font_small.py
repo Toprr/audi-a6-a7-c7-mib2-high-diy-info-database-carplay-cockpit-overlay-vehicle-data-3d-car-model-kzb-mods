@@ -31,7 +31,7 @@ lines.append("static const uint32_t so_sd_off[11] = {%s};" % ",".join(map(str, o
 lines.append(arr("so_sd_px", data))
 
 ua, ud = fr.getmetrics()
-for name, text in (("SO_SU1", "l/100km"), ("SO_SU2", "L")):
+for name, text in (("SO_SU1", "l/100km"), ("SO_SU2", "L"), ("SO_SU3", "km/h")):
     u = render(fr, text, ua + ud)
     lines.append("#define %s_W %d" % (name, u.width))
     lines.append("#define %s_H %d" % (name, u.height))

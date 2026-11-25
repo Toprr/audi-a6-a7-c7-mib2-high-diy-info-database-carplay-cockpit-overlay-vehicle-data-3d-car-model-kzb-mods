@@ -340,7 +340,12 @@ case "$1" in
 	collect) do_collect ;;
 	update)
 		do_collect
-		if [ -f "$JARS/$JAR_NAME" ] && check_jar "$JARS/$JAR_NAME"; then
+		if [ -f "$FLAG_DISABLED" ]; then
+			# 0.9.1: a short start had switched the logger off, and an update with the
+			# same jar used to leave it off. Install again, which clears the flags.
+			log "the boot guard had switched the logger off, installing again to re-arm it"
+			do_install
+		elif [ -f "$JARS/$JAR_NAME" ] && check_jar "$JARS/$JAR_NAME"; then
 			log "jar on the unit is already this version, nothing to update"
 		else
 			do_install

@@ -125,6 +125,68 @@ if [ -f "$VOLUME/vehlog/street_blank.txt" ]; then
 		*) note "== street_blank.txt: '$sb' not understood (on or off)" ;;
 	esac
 fi
+# 3e. CarPlay safe area: vehlog/carplay_safearea.txt = pixels to raise its bottom edge
+#     (0 = mib-cluster-map's original). mib-cluster-map's file
+#     /mnt/app/root/mibr-carplay111-safearea.conf (x= y= w= h=, read when the iPhone
+#     connects) tells the iPhone where the car and its labels go; a shorter h moves
+#     the street name up, x, y and w (and so the turn card at the top) stay. Always
+#     worked out from the original, kept as .vehlog.orig; if mib-cluster-map wrote a
+#     new file since (reinstall), that one becomes the original.
+SA=/net/mmx/mnt/app/root/mibr-carplay111-safearea.conf
+sa_read() {
+	SX=""; SY=""; SW=""; SH=""
+	while read -r _l; do
+		case "$_l" in
+			x=*) SX=${_l#x=} ;;
+			y=*) SY=${_l#y=} ;;
+			w=*) SW=${_l#w=} ;;
+			h=*) SH=${_l#h=} ;;
+		esac
+	done < "$1"
+	case "$SX$SY$SW$SH" in ''|*[!0-9]*) return 1 ;; esac
+	[ -n "$SX" ] && [ -n "$SY" ] && [ -n "$SW" ] && [ -n "$SH" ]
+}
+if [ -f "$VOLUME/vehlog/carplay_safearea.txt" ]; then
+	raise=$(word_of "$VOLUME/vehlog/carplay_safearea.txt")
+	case "$raise" in *[!0-9]) raise=${raise%?} ;; esac   # Windows line end
+	case "$raise" in
+		''|*[!0-9]*) note "== carplay_safearea.txt: '$raise' not understood (a number of pixels, 0 = original)" ;;
+		*)
+		if [ ! -f "$SA" ]; then
+			note "== CarPlay safe area: $SA not found (mib-cluster-map uses the whole window), nothing changed"
+		elif ! sa_read "$SA"; then
+			note "== CarPlay safe area: $SA not in the expected form, nothing changed"
+		else
+			mount -uw /net/mmx/mnt/app 2> /dev/null
+			cur="$SX $SY $SW $SH"
+			ours=""
+			[ -f "$SA.vehlog.ours" ] && sa_read "$SA.vehlog.ours" && ours="$SX $SY $SW $SH"
+			orig=""
+			[ -f "$SA.vehlog.orig" ] && sa_read "$SA.vehlog.orig" && orig="$SX $SY $SW $SH"
+			if [ -z "$orig" ] || { [ "$cur" != "$ours" ] && [ "$cur" != "$orig" ]; }; then
+				cp "$SA" "$SA.vehlog.orig" && orig="$cur" && note "== CarPlay safe area: original kept ($cur as x y w h)"
+			fi
+			if [ -z "$orig" ]; then
+				note "== CarPlay safe area: could not keep a copy of the original, nothing changed"
+			elif [ "$raise" -eq 0 ]; then
+				cp "$SA.vehlog.orig" "$SA" && rm -f "$SA.vehlog.ours" && note "== CarPlay safe area: original again ($orig), active when the iPhone connects next time"
+			else
+				set -- $orig
+				nh=$(($4 - raise))
+				if [ "$raise" -gt 150 ] || [ "$nh" -lt 120 ]; then
+					note "== CarPlay safe area: raising by $raise would leave too little ($nh of $4 px high), nothing changed"
+				elif { echo "x=$1"; echo "y=$2"; echo "w=$3"; echo "h=$nh"; } > "$SA.vehlog.ours" && cp "$SA.vehlog.ours" "$SA"; then
+					note "== CarPlay safe area: bottom edge $raise px higher (x y w h: $orig -> $1 $2 $3 $nh), active when the iPhone connects next time"
+				else
+					cp "$SA.vehlog.orig" "$SA" 2> /dev/null
+					note "== CarPlay safe area: could not write $SA, original put back"
+				fi
+			fi
+			mount -ur /net/mmx/mnt/app 2> /dev/null
+		fi
+		;;
+	esac
+fi
 # 4. Read-only display manager snapshot (which windows the cockpit shows right now),
 #    saved as vehlog/logs/dmdt_<n>/. Run it once with the CarPlay map and once with the
 #    Audi map in the cockpit.

@@ -65,12 +65,20 @@ static void age(const char* path) { struct utimbuf old = { time(NULL) - 3600, ti
 int main(int argc, char** argv) {
     remove(SO_OFF);
     if (argc > 1 && strcmp(argv[1], "conf") == 0) {
-        put(SO_CONF, "pos=bl\r\nleft=180\r\nbottom=20\r\nfuelright=210\r\n");
+        put(SO_CONF, "pos=bl\r\nleft=180\r\nbottom=20\r\nfuelright=210\r\nalpha=230\r\n");
         vl_speed(52); vl_fuel(87, 58);
         frame();
         const Draw* s = find(so_tex); const Draw* f = find(so_ftex);
         check("conf: speed box at left 180, bottom 20", s && s->x0 == 180 && s->y1 == 278);
         check("conf: fuel box 210 from the right", f && f->x1 == 590 && f->y1 == 278);
+        check("conf: alpha=230 used for the box", so_px[(1 * SO_TEX_W + so_bw / 2) * 4 + 3] == 230);
+        return fails;
+    }
+    if (argc > 1 && strcmp(argv[1], "badalpha") == 0) {
+        put(SO_CONF, "alpha=10\n");
+        vl_speed(52); vl_fuel(87, 58);
+        frame();
+        check("conf: alpha=10 (too low) ignored, default 179", so_alpha == 179 && so_px[(1 * SO_TEX_W + so_bw / 2) * 4 + 3] == 179);
         return fails;
     }
     if (argc > 1 && strcmp(argv[1], "fueloff") == 0) {
@@ -97,22 +105,24 @@ int main(int argc, char** argv) {
     const Draw* s = find(so_tex); const Draw* f = find(so_ftex);
     if (s) printf("     speed box x %.0f..%.0f y %.0f..%.0f\n", s->x0, s->x1, s->y0, s->y1);
     if (f) printf("     fuel  box x %.0f..%.0f y %.0f..%.0f\n", f->x0, f->x1, f->y0, f->y1);
-    check("speed box 176 from the left, 12 from the bottom", s && s->x0 == 176 && s->y1 == 286);
-    check("fuel box mirrored by default: 176 from the right, bottom 12", f && f->x1 == 624 && f->y1 == 286);
-    printf("     speed box %d x %d, fuel box %d x %d (0.4: both 154 x 60)\n", so_sw, so_sh, so_fw, so_fh);
-    check("both smaller than before", so_sw < 154 && so_sh < 60 && so_fw < 154 && so_fh < 60);
-    check("fuel box: 6 px left/right, 5 px top/bottom around its ink", so_fw - 12 == so_fb[2] - so_fb[0] && so_fh - 10 == so_fb[3] - so_fb[1]);
+    check("speed box 175 from the left, 12 from the bottom", s && s->x0 == 175 && s->y1 == 286);
+    check("fuel box mirrored by default: 175 from the right, bottom 12", f && f->x1 == 625 && f->y1 == 286);
+    printf("     both boxes %d x %d (0.4: 154 x 60, 0.6: 137 x 42 and 105 x 47)\n", so_bw, so_bh);
+    check("both boxes exactly the same size", s && f && s->x1 - s->x0 == f->x1 - f->x0 && s->y1 - s->y0 == f->y1 - f->y0);
+    check("smaller than 0.4", so_bw < 154 && so_bh < 60);
+    check("box background 70 % opaque by default (alpha 179, was 160)", so_px[(1 * SO_TEX_W + so_bw / 2) * 4 + 3] == 179);
+    check("small km/h: narrower than the old one", SO_SU3_W < SO_UNIT_W);
     {
         // speed box: same size and "km/h" in the same place for every speed
-        int sizes_ok = 1, unit_ok = 1, inside = 1, ref_w = so_sw, ref_h = so_sh, unit_x = -1;
+        int sizes_ok = 1, unit_ok = 1, inside = 1, ref_w = so_bw, ref_h = so_bh, unit_x = -1;
         int sp[7] = {0, 4, 40, 99, 100, 140, 188};
         for (int k = 0; k < 7; k++) {
             vl_speed(sp[k]); frame();
             const Draw* d = find(so_tex);
-            if (!d || d->x0 != 176 || d->x1 - d->x0 != ref_w || d->y1 - d->y0 != ref_h || d->y1 != 286) sizes_ok = 0;
+            if (!d || d->x0 != 175 || d->x1 - d->x0 != ref_w || d->y1 - d->y0 != ref_h || d->y1 != 286) sizes_ok = 0;
             // right edge of the ink in the texture = end of "km/h"
             int r = -1;
-            for (int x = 0; x < so_sw; x++) for (int y = 0; y < so_sh; y++)
+            for (int x = 0; x < so_bw; x++) for (int y = 0; y < so_bh; y++)
                 if (so_px[(y * SO_TEX_W + x) * 4 + 3] > 200 && so_px[(y * SO_TEX_W + x) * 4] > 100) r = x;
             if (unit_x < 0) unit_x = r; else if (r != unit_x) unit_ok = 0;
             if (so_sb[0] < so_sref[0] || so_sb[2] > so_sref[2] || so_sb[1] < so_sref[1] || so_sb[3] > so_sref[3]) inside = 0;
@@ -121,7 +131,20 @@ int main(int argc, char** argv) {
         check("speed box: same size and place for 0 to 188 km/h", sizes_ok);
         check("speed box: km/h does not move", unit_ok);
         check("speed box: every speed fits inside the 3-digit size", inside);
-        check("speed box: 6 px left/right, 5 px top/bottom around 888 km/h", so_sw - 12 == so_sref[2] - so_sref[0] && so_sh - 10 == so_sref[3] - so_sref[1]);
+        check("box: 6 px left/right and 5 px top/bottom around the larger content",
+              (so_bw - 12 == so_sref[2] - so_sref[0] || so_bw - 12 >= so_fb[2] - so_fb[0]) && so_bh - 10 >= so_sref[3] - so_sref[1]);
+        {
+            // fuel box: same size for every value
+            int fuel_ok = 1;
+            int fc[5] = {87, 124, 54, -1, 99}; int fl[5] = {50, 9, 150, 63, -1};
+            for (int k = 0; k < 5; k++) {
+                vl_fuel(fc[k], fl[k]); frame();
+                const Draw* d = find(so_ftex);
+                if (!d || d->x1 != 625 || d->x1 - d->x0 != ref_w || d->y1 - d->y0 != ref_h) fuel_ok = 0;
+            }
+            check("fuel box: same size and place for every value", fuel_ok);
+            vl_fuel(87, 58); frame();
+        }
         vl_speed(52); frame();
     }
     // 2. the car's problem: file times useless (1 h old after every write), cruise control
@@ -176,9 +199,9 @@ int main(int argc, char** argv) {
         so_speed = sp[k]; so_fcons = fc[k]; so_flit = fl[k];
         so_rasterize_fuel(fc[k], fl[k]); so_rasterize(sp[k]);
         char n[64];
-        so_rasterize(sp[k]); snprintf(n, sizeof n, "s%d_%dx%d", k, so_sw, so_sh); dump(n);
-        so_rasterize_fuel(fc[k], fl[k]); snprintf(n, sizeof n, "f%d_%dx%d", k, so_fw, so_fh); dump(n);
-        printf("     preview %d: %d km/h -> %d x %d, fuel %d, %d L -> %d x %d\n", k, sp[k], so_sw, so_sh, fc[k], fl[k], so_fw, so_fh);
+        so_rasterize(sp[k]); snprintf(n, sizeof n, "s%d_%dx%d", k, so_bw, so_bh); dump(n);
+        so_rasterize_fuel(fc[k], fl[k]); snprintf(n, sizeof n, "f%d_%dx%d", k, so_bw, so_bh); dump(n);
+        printf("     preview %d: %d km/h, fuel %d, %d L -> boxes %d x %d\n", k, sp[k], fc[k], fl[k], so_bw, so_bh);
     }
     printf(fails ? "%d FAILED\n" : "ALL OK\n", fails);
     return fails;

@@ -25,6 +25,9 @@
  * 0.6: not the same size any more. The speed box has one fixed size that fits three
  * digits ("888 km/h"), the digits are right-aligned so "km/h" never moves. The fuel
  * box fits its own content.
+ * 0.7: both boxes the same fixed size again (the larger of "888 km/h" and the widest
+ * fuel content), "km/h" in the small unit size, left box at 175.
+ * 0.8: box opacity is a setting (alpha=, 0 to 255), default 179 (70 %, was 160).
  *
  * Position: bottom left by default, SO_LEFT_DEFAULT pixels from the left edge (on the
  * A6/A7 C7 the rev counter covers about the left 180 of 800 pixels) and
@@ -33,6 +36,7 @@
  * can change it (read when the player starts):
  *   pos=bl|br|tl|tr   left=<px>   right=<px>   top=<px>   bottom=<px>
  *   fuel=on|off       fuelright=<px>
+ *   alpha=<40..255>   box background opacity (255 = solid black)
  */
 #pragma once
 #include <stdio.h>
@@ -54,9 +58,10 @@
 #define SO_RADIUS 6
 #define SO_MARGIN 12
 #define SO_BOTTOM_DEFAULT 12
-#define SO_LEFT_DEFAULT 176
+#define SO_LEFT_DEFAULT 175
 #define SO_CONF "/mnt/persist/speedoverlay.conf"
 #define SO_GREY 180                  /* units and the jerrycan */
+#define SO_ALPHA_DEFAULT 179         /* 0.8: box background, 70 % opaque (0.7: 160) */
 
 static int so_state = 0;            /* 0 = not set up, 1 = ready, -1 = off for good */
 static GLuint so_prog, so_tex, so_ftex;
@@ -73,6 +78,7 @@ static int so_leftpx = SO_LEFT_DEFAULT;
 static int so_rightpx = SO_MARGIN;
 static int so_toppx = SO_MARGIN;
 static int so_fuelright = -1;        /* -1 = same as left */
+static int so_alpha = SO_ALPHA_DEFAULT;
 static bool so_logged = false;
 static bool so_flogged = false;
 static uint8_t so_px[SO_TEX_W * SO_TEX_H * 4];
@@ -81,8 +87,7 @@ static uint8_t so_cs[SO_TEX_W * SO_TEX_H * 2];
 static uint8_t so_cf[SO_TEX_W * SO_TEX_H * 2];
 static int so_sb[4] = {0, 0, 0, 0};     /* speed ink x0, y0, x1, y1 (x1, y1 exclusive) */
 static int so_fb[4] = {0, 0, 0, 0};     /* fuel ink */
-static int so_sw = 0, so_sh = 0;        /* 0.6: size of the speed box (fixed, fits 3 digits) */
-static int so_fw = 0, so_fh = 0;        /* 0.6: size of the fuel box (fits its content) */
+static int so_bw = 0, so_bh = 0;        /* 0.7: size of both boxes (fixed) */
 static int so_sref[4] = {0, 0, 0, 0};   /* 0.6: ink bounds of the widest speed, "888 km/h" */
 
 static const char* so_vs =
@@ -142,6 +147,10 @@ static void so_read_conf() {
             int b = atoi(line + 10);
             if (b >= 0 && b <= 700) so_fuelright = b;
         }
+        else if (strncmp(line, "alpha=", 6) == 0) {
+            int b = atoi(line + 6);
+            if (b >= 40 && b <= 255) so_alpha = b;
+        }
     }
     fclose(cf);
 }
@@ -168,8 +177,8 @@ static void so_init() {
     so_texture(&so_ftex);
     glActiveTexture(GL_TEXTURE0);
     so_state = 1;
-    LOG("speed overlay 0.6: ready (corner %d, left %d, right %d, top %d, bottom %d, fuel %s right %d)",
-        so_corner, so_leftpx, so_rightpx, so_toppx, so_bottom, so_fuel_on ? "on" : "off", so_fuelright);
+    LOG("speed overlay 0.8: ready (corner %d, left %d, right %d, top %d, bottom %d, fuel %s right %d, alpha %d)",
+        so_corner, so_leftpx, so_rightpx, so_toppx, so_bottom, so_fuel_on ? "on" : "off", so_fuelright, so_alpha);
 }
 
 /* Reads the first line of a VehLog file and parses up to max integers from it.
@@ -239,7 +248,7 @@ static void so_box(int w, int h) {
             int dy = y < r ? r - y : (y >= h - r ? y - (h - r - 1) : 0);
             if (dx * dx + dy * dy > r * r) continue;
             uint8_t* p = &so_px[(y * SO_TEX_W + x) * 4];
-            p[0] = p[1] = p[2] = 0; p[3] = 160;
+            p[0] = p[1] = p[2] = 0; p[3] = (uint8_t)so_alpha;
         }
     }
 }
@@ -313,7 +322,7 @@ static void so_put(const uint8_t* layer, const int* b, int w, int h, GLuint tex)
  * so "km/h" always sits in the same place. */
 static void so_draw_speed(const char* digits) {
     int nd = (int)strlen(digits);
-    int gap = 6;
+    int gap = 5;
     memset(so_cs, 0, sizeof(so_cs));
     int top = (SO_TEX_H - SO_DIG_H) / 2 + 2;
     int x0 = 2;
@@ -323,25 +332,39 @@ static void so_draw_speed(const char* digits) {
         so_blit(so_cs, &so_dig_px[so_dig_off[d]], so_dig_w[d], SO_DIG_H, x0, top, 255);
         x0 += so_dig_w[d] - 4;
     }
-    so_blit(so_cs, so_unit_px, SO_UNIT_W, SO_UNIT_H, x0 + gap, top + SO_DIG_BASE - SO_UNIT_BASE, SO_GREY);
+    /* 0.7: "km/h" in the small unit size of the fuel box, on the digits' baseline */
+    so_blit(so_cs, so_su3_px, SO_SU3_W, SO_SU3_H, x0 + gap, top + SO_DIG_BASE - SO_SU_BASE, SO_GREY);
 }
 
-/* 0.6: left box. Its size and the place of the text come from "888 km/h", the widest
- * speed, so the box never changes size and "km/h" never moves, whether 4, 40 or 140. */
+static void so_draw_fuel(int cons, int lit);
+
+/* 0.7: one size for both boxes, fixed: the larger of "888 km/h" and the widest fuel
+ * content ("88,8 l/100km" over "150 L"), plus SO_PAD_X / SO_PAD_Y. Worked out once. */
+static void so_size() {
+    if (so_bw > 0) return;
+    int fref[4];
+    so_draw_speed("888");
+    so_bounds(so_cs, so_sref);
+    so_draw_fuel(888, 150);
+    so_bounds(so_cf, fref);
+    int w = so_sref[2] - so_sref[0], h = so_sref[3] - so_sref[1];
+    if (fref[2] - fref[0] > w) w = fref[2] - fref[0];
+    if (fref[3] - fref[1] > h) h = fref[3] - fref[1];
+    so_bw = w + 2 * SO_PAD_X;
+    so_bh = h + 2 * SO_PAD_Y;
+    if (so_bw > SO_TEX_W) so_bw = SO_TEX_W;
+    if (so_bh > SO_TEX_H) so_bh = SO_TEX_H;
+}
+
+/* Left box: the place of the text comes from "888 km/h", so "km/h" never moves,
+ * whether 4, 40 or 140. */
 static void so_rasterize(int speed) {
-    if (so_sref[2] <= so_sref[0]) {
-        so_draw_speed("888");
-        so_bounds(so_cs, so_sref);
-        so_sw = so_sref[2] - so_sref[0] + 2 * SO_PAD_X;
-        so_sh = so_sref[3] - so_sref[1] + 2 * SO_PAD_Y;
-        if (so_sw > SO_TEX_W) so_sw = SO_TEX_W;
-        if (so_sh > SO_TEX_H) so_sh = SO_TEX_H;
-    }
+    so_size();
     char digits[12];
     snprintf(digits, sizeof(digits), "%d", speed < 0 ? 0 : (speed > 999 ? 999 : speed));
     so_draw_speed(digits);
     so_bounds(so_cs, so_sb);
-    so_put(so_cs, so_sref, so_sw, so_sh, so_tex);
+    so_put(so_cs, so_sref, so_bw, so_bh, so_tex);
 }
 
 /* Width of a string of small digits and ',' (advance = glyph width - 2). */
@@ -365,7 +388,7 @@ static int so_small(const char* s, int x, int base) {
  * 0.5: lines 20 px apart (baseline to baseline), was 25. */
 #define SO_FL1 24
 #define SO_FL2 44
-static void so_rasterize_fuel(int cons, int lit) {
+static void so_draw_fuel(int cons, int lit) {
     memset(so_cf, 0, sizeof(so_cf));
     if (cons >= 0) {
         char t[12];
@@ -383,13 +406,15 @@ static void so_rasterize_fuel(int cons, int lit) {
         x += 3 + SO_SU2_W + 4;
         so_blit(so_cf, so_icon_px, SO_ICON_W, SO_ICON_H, x, SO_FL2 - SO_ICON_H + 1, SO_GREY);
     }
+}
+
+/* Right box: its lines centred in the shared box size. */
+static void so_rasterize_fuel(int cons, int lit) {
+    so_size();
+    so_draw_fuel(cons, lit);
     so_bounds(so_cf, so_fb);
     if (so_fb[2] <= so_fb[0]) return;   /* nothing to show, the box stays hidden */
-    so_fw = so_fb[2] - so_fb[0] + 2 * SO_PAD_X;
-    so_fh = so_fb[3] - so_fb[1] + 2 * SO_PAD_Y;
-    if (so_fw > SO_TEX_W) so_fw = SO_TEX_W;
-    if (so_fh > SO_TEX_H) so_fh = SO_TEX_H;
-    so_put(so_cf, so_fb, so_fw, so_fh, so_ftex);
+    so_put(so_cf, so_fb, so_bw, so_bh, so_ftex);
 }
 
 static void so_quad(GLuint tex, float x0, float y0, int bw, int bh, int winW, int winH) {
@@ -466,12 +491,12 @@ static void speed_overlay_draw(int winW, int winH, uint64_t nowUs) {
     if (sp) {
         bool left = so_corner == 0 || so_corner == 2;
         bool bottom = so_corner >= 2;
-        float x0 = left ? (float)so_leftpx : (float)(winW - so_rightpx - so_sw);
-        float y0 = bottom ? (float)(winH - so_bottom - so_sh) : (float)so_toppx;
-        so_quad(so_tex, x0, y0, so_sw, so_sh, winW, winH);
+        float x0 = left ? (float)so_leftpx : (float)(winW - so_rightpx - so_bw);
+        float y0 = bottom ? (float)(winH - so_bottom - so_bh) : (float)so_toppx;
+        so_quad(so_tex, x0, y0, so_bw, so_bh, winW, winH);
     }
     if (fu) {
-        so_quad(so_ftex, (float)(winW - so_fuelright - so_fw), (float)(winH - so_bottom - so_fh), so_fw, so_fh, winW, winH);
+        so_quad(so_ftex, (float)(winW - so_fuelright - so_bw), (float)(winH - so_bottom - so_bh), so_bw, so_bh, winW, winH);
     }
     glDisableVertexAttribArray(so_pos);
     glDisableVertexAttribArray(so_uv);
