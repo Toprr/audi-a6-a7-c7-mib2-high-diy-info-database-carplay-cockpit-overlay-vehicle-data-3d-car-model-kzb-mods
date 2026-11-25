@@ -2,7 +2,7 @@
 
 **This is not our project.** Both patches come from
 **[tfourj/MIB2-Patcher](https://github.com/tfourj/MIB2-Patcher)** (pointed out to us by a user in
-[issue #1](https://github.com/Toprr/audi-mib2-high-c7-carplay-cluster-map-3d-car-model-diy/issues/1)). All credit goes to them; go there for downloads, docs and support.
+[issue #1](../../../issues/1)). All credit goes to them; go there for downloads, docs and support.
 We only report what we checked and what we saw on our car.
 
 > Tested on **one** car: Audi A6 Avant C7.5, `MHI2_ER_AU57x_K3663_1` (MU1425), MIB2-Patcher **v1.3.0**,

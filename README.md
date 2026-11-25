@@ -1,4 +1,4 @@
-# Audi MIB2 High (C7 A6 / A7) DIY: CarPlay map in the virtual cockpit, custom 3D car model, car menu icon, rear-camera research
+# Audi A6 / A7 C7 MIB2 High DIY info database: CarPlay in the virtual cockpit with speed and fuel overlay, custom 3D car model, vehicle data and more mods
 
 Everything we learned modding an **Audi A6 Avant C7.5 (2018)** with **MIB2 High** (MHI2, Harman, QNX)
 running `MHI2_ER_AU57x_K3663_1`, written down so you don't have to pay 100+ EUR to someone for things
@@ -6,7 +6,8 @@ you can do yourself for free.
 
 **Search keywords:** Audi A6 A7 S6 S7 RS6 RS7 C7 C7.5 4G · MIB2 High · MHI2 · MMI 3G+ successor · virtual cockpit / FIS /
 cluster · CarPlay map in cluster · Android Auto map in cluster · 3D car model · car look · drive select car ·
-content.kzb · Kanzi KZB format · car menu icon · rear view camera in cluster · dmdt display manager · SWDL SD update
+content.kzb · Kanzi KZB format · car menu icon · rear view camera in cluster · dmdt display manager · SWDL SD update ·
+speed in cockpit · fuel / consumption overlay · vehicle data DSI · CarPlay star button / joker · touchpad cursor CarPlay
 
 > [!CAUTION]
 > **This repository is meant as information: a write-up of what we learned, in the hope it helps others.
