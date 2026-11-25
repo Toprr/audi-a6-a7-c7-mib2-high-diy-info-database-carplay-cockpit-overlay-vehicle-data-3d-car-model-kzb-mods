@@ -8,10 +8,14 @@ and looks right on the road. We keep driving with it and will update this page w
 > mib-cluster-map's stream player. Full M.I.B. backup first, see [docs/00](00-safety.md). The scripts refuse
 > any other `lsd.jxe` and any other player (sha1 checks) and keep the originals for the way back.
 
-![Cockpit overlay, rendered from the player's own bitmaps](images/cockpit_overlay_preview.png)
+![Cockpit overlay in our A6: CarPlay map with speed box left and fuel box right](images/cockpit_overlay_car.jpg)
 
-*Rendered on the PC from the exact bitmaps the player draws (window 800×298, 2× enlarged). The map behind is a
-stand-in. On the car the boxes sit right next to the rev counter and the speedometer.*
+*In our car while driving: CarPlay map from mib-cluster-map, our speed box (left) and fuel box (right), the
+cluster's street label at the bottom kept empty. Street names and the odometer are blurred on purpose.*
+
+![The same boxes, rendered from the player's own bitmaps](images/cockpit_overlay_preview.png)
+
+*The exact bitmaps the player draws, rendered on the PC (window 800×298, 2× enlarged, stand-in map).*
 
 ## What you get
 
