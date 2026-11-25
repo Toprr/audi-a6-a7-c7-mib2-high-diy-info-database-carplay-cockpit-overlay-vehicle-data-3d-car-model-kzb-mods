@@ -46,6 +46,23 @@ public class KombiListener implements org.dsi.ifc.carkombi.DSICarKombiListener {
         return o == null ? "(null)" : "(st" + o.state + ",r" + o.reason + ")";
     }
 
+    /** 0.7: range and long term consumption for the estimated fuel in the overlay. */
+    public void updateBCCurrentRange1(org.dsi.ifc.global.CarBCCurrentRange r, int validFlag) {
+        try {
+            VehLog.rangeNow(r, validFlag);
+        } catch (Throwable e) {
+            VehLog.lastError = "range: " + e;
+        }
+    }
+
+    public void updateBCLongTermAverageConsumption1(org.dsi.ifc.global.CarBCConsumption c, int validFlag) {
+        try {
+            VehLog.consNow(c, validFlag);
+        } catch (Throwable e) {
+            VehLog.lastError = "consumption: " + e;
+        }
+    }
+
     public void updateSIAViewOptions(org.dsi.ifc.carkombi.SIAViewOptions a0, int a1) { }
     public void updateSIAServiceData(org.dsi.ifc.carkombi.SIAServiceData a0, int a1) { }
     public void updateSIAOilInspection(org.dsi.ifc.carkombi.SIAOilInspection a0, int a1) { }
@@ -61,13 +78,11 @@ public class KombiListener implements org.dsi.ifc.carkombi.DSICarKombiListener {
     public void updateBCIndications(org.dsi.ifc.carkombi.BCIndications a0, int a1) { }
     public void updateBCCurrentConsumption1(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
     public void updateBCCurrentConsumption2(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
-    public void updateBCCurrentRange1(org.dsi.ifc.global.CarBCCurrentRange a0, int a1) { }
     public void updateBCCurrentRange2(org.dsi.ifc.global.CarBCCurrentRange a0, int a1) { }
     public void updateBCTotalDistance(org.dsi.ifc.global.CarBCDistance a0, int a1) { }
     public void updateBCShortTermAverageConsumption1(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
     public void updateBCShortTermAverageConsumption2(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
     public void updateBCShortTermGeneral(org.dsi.ifc.carkombi.BCShortTermGeneralData a0, int a1) { }
-    public void updateBCLongTermAverageConsumption1(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
     public void updateBCLongTermAverageConsumption2(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
     public void updateBCLongTermGeneral(org.dsi.ifc.carkombi.BCLongTermGeneralData a0, int a1) { }
     public void updateBCCycleAverageConsumption1(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }

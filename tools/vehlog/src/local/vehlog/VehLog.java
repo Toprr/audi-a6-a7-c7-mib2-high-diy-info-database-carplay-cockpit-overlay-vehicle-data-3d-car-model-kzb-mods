@@ -23,13 +23,15 @@ import org.osgi.framework.ServiceReference;
  * Java 1.2 level for the unit's J9: no StringBuilder, no boxing, no class literals.
  */
 public final class VehLog implements Runnable {
-    static final String VERSION = "0.5";
+    static final String VERSION = "0.9";
     private static final String FLAG_PENDING = "/mnt/persist/vehlog_pending";
     private static final String FLAG_LOADED = "/mnt/persist/vehlog_loaded";
     private static final String OFF = "/tmp/vehlog-off";
     private static final String LOG = "/mnt/persist/vehlog.log";
     /* 0.3: current speedometer value for the cockpit speed overlay (stream-player) */
     private static final String SPEED_FILE = "/tmp/vehlog_speed";
+    /* 0.7: long term consumption and estimated fuel for the overlay's right box */
+    private static final String FUEL_FILE = "/tmp/vehlog_fuel";
     private static final long MAX_BYTES = 524288L;          // stop writing after 512 KB
     private static final long CONFIRM_AFTER_MS = 90000L;     // boot guard: HMI ran 90 s
     private static final long FIRST_WAIT_MS = 20000L;        // let the HMI start first
@@ -40,6 +42,8 @@ public final class VehLog implements Runnable {
     private static final int ATTR_BCOILTEMPERATURE = 30;
     private static final int ATTR_BCCOOLANTTEMPERATURE = 63;
     private static final int ATTR_BCOILTEMPERATUREVALUE = 64;
+    private static final int ATTR_BCCURRENTRANGE1 = 8;
+    private static final int ATTR_BCLONGTERMAVERAGECONSUMPTION1 = 14;
     private static final int ATTR_DYNAMICVEHICLEINFOHIGHFREQUENT = 14;
 
     private static final Object LOCK = new Object();
@@ -97,6 +101,8 @@ public final class VehLog implements Runnable {
             boolean confirmed = false;
             int tries = 0;
             int catalogTries = 0;
+            int streetTries = 0;
+            boolean streetStarted = false;
             String last = "";
             long lastLine = 0L;
             long lastStats = 0L;
@@ -118,7 +124,8 @@ public final class VehLog implements Runnable {
                     if (bc != null) {
                         if (!kombi) {
                             kombi = subscribe(bc, DSI_KOMBI,
-                                    new int[] {ATTR_BCVIEWOPTIONS, ATTR_BCOILTEMPERATURE, ATTR_BCCOOLANTTEMPERATURE, ATTR_BCOILTEMPERATUREVALUE},
+                                    new int[] {ATTR_BCVIEWOPTIONS, ATTR_BCOILTEMPERATURE, ATTR_BCCOOLANTTEMPERATURE, ATTR_BCOILTEMPERATUREVALUE,
+                                            ATTR_BCCURRENTRANGE1, ATTR_BCLONGTERMAVERAGECONSUMPTION1},
                                     new KombiListener());
                         }
                         if (!vehicle) {
@@ -140,6 +147,14 @@ public final class VehLog implements Runnable {
                         catalogTries = 30;
                     }
                 }
+                // 0.6: blank street name on the cockpit while CarPlay is up (switchable)
+                if (kombi && vehicle && !streetStarted && streetTries < 30) {
+                    streetTries++;
+                    BundleContext bc = bundleContext();
+                    if (bc != null) {
+                        streetStarted = StreetBlank.start(bc);
+                    }
+                }
                 Catalog.write(false);
                 String err = lastError;
                 if (err != null) {
@@ -147,7 +162,8 @@ public final class VehLog implements Runnable {
                     line("listener error: " + err);
                 }
                 String values = "oil=" + oil + " coolant=" + coolant + " speed=" + speed
-                        + " realSpeed=" + realSpeed + " rpm=" + rpm + " | " + oilView + " bcOil=" + oilSetting;
+                        + " realSpeed=" + realSpeed + " rpm=" + rpm + " | " + oilView + " bcOil=" + oilSetting
+                        + " | range=" + rangeKm + " cons=" + consTenths + " fuelL=" + fuelLitres();
                 if (!values.equals(last) || now - lastLine >= 30000L) {
                     last = values;
                     lastLine = now;
@@ -156,9 +172,11 @@ public final class VehLog implements Runnable {
                 if (now - lastStats >= 60000L) {
                     lastStats = now;
                     line("updates so far: oil=" + oilCount + " coolant=" + coolantCount + " dyn=" + dynCount + " view=" + viewCount);
+                    line(StreetBlank.stats());
                     flush();
                 }
                 writeSpeed();
+                writeFuel();
                 if (pending.length() > 2048) {
                     flush();
                 }
@@ -220,7 +238,8 @@ public final class VehLog implements Runnable {
         } catch (Throwable t) {
             line("boot guard confirm failed: " + t);
         }
-        rearmTouchCursor();
+        rearm("TOUCHCURSOR", "/mnt/persist/touchcursor", TC_REARMS);
+        rearm("JOKERBTN", "/mnt/persist/jokerbtn", JB_REARMS);
     }
 
     /*
@@ -231,35 +250,37 @@ public final class VehLog implements Runnable {
      * again on the next start. At most MAX_REARMS times in a row: if TOUCHCURSOR really
      * broke the start, it stays off after that. The count goes back to 0 as soon as
      * TOUCHCURSOR has had a good start (no pending and no disabled flag any more).
+     * 0.9: the same for MIB2-Patcher's JOKERBTN, which has the same kind of boot guard
+     * (flags /mnt/persist/jokerbtn_pending and _disabled) and was found switched off too.
      */
-    private static final String TC_PENDING = "/mnt/persist/touchcursor_pending";
-    private static final String TC_DISABLED = "/mnt/persist/touchcursor_disabled";
     private static final String TC_REARMS = "/mnt/persist/vehlog_tc_rearms";
+    private static final String JB_REARMS = "/mnt/persist/vehlog_jb_rearms";
     private static final int MAX_REARMS = 3;
 
-    private static void rearmTouchCursor() {
+    private static void rearm(String name, String flag, String countFile) {
         try {
-            boolean disabled = new File(TC_DISABLED).exists();
-            int n = readInt(TC_REARMS);
+            String disabledFlag = flag + "_disabled";
+            boolean disabled = new File(disabledFlag).exists();
+            int n = readInt(countFile);
             if (!disabled) {
-                if (n != 0 && !new File(TC_PENDING).exists()) {
-                    writeInt(TC_REARMS, 0);
-                    line("TOUCHCURSOR ok again, re-arm count reset");
+                if (n != 0 && !new File(flag + "_pending").exists()) {
+                    writeInt(countFile, 0);
+                    line(name + " ok again, re-arm count reset");
                 }
                 return;
             }
             if (n >= MAX_REARMS) {
-                line("TOUCHCURSOR is disabled and was re-armed " + n + " times in a row, leaving it off");
+                line(name + " is disabled and was re-armed " + n + " times in a row, leaving it off");
                 return;
             }
-            writeInt(TC_REARMS, n + 1);
-            if (new File(TC_DISABLED).delete()) {
-                line("TOUCHCURSOR was disabled by its boot guard, re-armed (" + (n + 1) + "/" + MAX_REARMS + "), active after the next start");
+            writeInt(countFile, n + 1);
+            if (new File(disabledFlag).delete()) {
+                line(name + " was disabled by its boot guard, re-armed (" + (n + 1) + "/" + MAX_REARMS + "), active after the next start");
             } else {
-                line("TOUCHCURSOR re-arm failed, could not delete " + TC_DISABLED);
+                line(name + " re-arm failed, could not delete " + disabledFlag);
             }
         } catch (Throwable t) {
-            line("TOUCHCURSOR re-arm error: " + t);
+            line(name + " re-arm error: " + t);
         }
     }
 
@@ -364,7 +385,10 @@ public final class VehLog implements Runnable {
                 // likely not supported). The player tolerates a half-written file.
                 FileOutputStream out = new FileOutputStream(SPEED_FILE);
                 try {
-                    out.write((v + "\n").getBytes("ISO-8859-1"));
+                    // 0.8: a counter after the value. The player takes a changed counter
+                    // as "VehLog is alive" (file times on the MMX's /tmp were not usable).
+                    speedSeq++;
+                    out.write((v + " " + speedSeq + "\n").getBytes("ISO-8859-1"));
                 } finally {
                     out.close();
                 }
@@ -383,6 +407,67 @@ public final class VehLog implements Runnable {
     }
 
     private static boolean speedOk;
+    private static int speedSeq;
+    private static int fuelSeq;
+
+    // 0.7: right box of the overlay. The car does not send the tank content in litres
+    // (BCTankLevel is always invalid), so it is estimated from the cluster's range and
+    // the long term consumption: litres = range km * l/100km / 100. -1 = unknown.
+    private static volatile int rangeKm = -1;
+    private static volatile int consTenths = -1;
+    private static boolean fuelOk;
+    private static boolean fuelErr;
+
+    static void rangeNow(org.dsi.ifc.global.CarBCCurrentRange r, int validFlag) {
+        int v = -1;
+        if (r != null && validFlag == 1 && r.state == 1 && r.currentRangeUnit == 0
+                && r.currentRangeValue >= 0 && r.currentRangeValue <= 3000) {
+            v = r.currentRangeValue;
+        }
+        rangeKm = v;
+    }
+
+    static void consNow(org.dsi.ifc.global.CarBCConsumption c, int validFlag) {
+        int v = -1;
+        if (c != null && validFlag == 1 && c.state == 1 && c.consumptionUnit == 0
+                && c.consumptionValue >= 1f && c.consumptionValue <= 50f) {
+            v = Math.round(c.consumptionValue * 10f);
+        }
+        consTenths = v;
+    }
+
+    static int fuelLitres() {
+        int r = rangeKm;
+        int c = consTenths;
+        if (r < 0 || c < 0) {
+            return -1;
+        }
+        int l = (r * c + 500) / 1000;
+        return l <= 150 ? l : -1;
+    }
+
+    /** "<consumption in tenths> <litres>", -1 for unknown. Rewritten every 2 s as a heartbeat. */
+    private static void writeFuel() {
+        try {
+            fuelSeq++;
+            String text = consTenths + " " + fuelLitres() + " " + fuelSeq + "\n";
+            FileOutputStream out = new FileOutputStream(FUEL_FILE);
+            try {
+                out.write(text.getBytes("ISO-8859-1"));
+            } finally {
+                out.close();
+            }
+            if (!fuelOk) {
+                fuelOk = true;
+                line("fuel file written: " + FUEL_FILE + " (" + text.trim() + ")");
+            }
+        } catch (Throwable t) {
+            if (!fuelErr) {
+                fuelErr = true;
+                line("fuel file write failed: " + t);
+            }
+        }
+    }
     private static boolean speedErr;
 
     private static void sleep(long ms) {

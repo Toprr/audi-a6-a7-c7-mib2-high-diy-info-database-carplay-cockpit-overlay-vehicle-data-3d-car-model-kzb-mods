@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Speed overlay 0.1: swaps mib-cluster-map's stream-player (v1.2.6) for the same
+# Speed overlay 0.6: swaps mib-cluster-map's stream-player (v1.2.6) for the same
 # player with a small speed box drawn over the cockpit map. The speed comes from
 # VehLog (/tmp/vehlog_speed); without it the player draws the map exactly as before.
 #
@@ -15,7 +15,7 @@
 
 STOCK_SHA1="0e38137fe58434d6722a09c5e5c67c10e91c0f92"
 # Earlier builds of our overlay player (they may be on the unit already)
-OLD_OURS="479d82463046be4542a41b68119ddabbd9cd3c46 74978212b4ee078873024fd5e7a0bb0e9fcbda13 72902184037727f4eeea6485233bf1dab03224ac 8ff3d58834b929a71b6c7a30fde9acc6cac77257"
+OLD_OURS="479d82463046be4542a41b68119ddabbd9cd3c46 74978212b4ee078873024fd5e7a0bb0e9fcbda13 72902184037727f4eeea6485233bf1dab03224ac 8ff3d58834b929a71b6c7a30fde9acc6cac77257 405eaf3e66ee9aef14919d86135210a0971abb67 b75c5eba1c9ea130d3ed21772738249c7faf28d6 5789904cf51d39c607521d1a9c2d0ef2a5e15bc9 800809f6fb0640d077a2cc267a188697bd10c0cb"
 OURS="stream-player.speed"
 
 PKG=$(dirname "$0")

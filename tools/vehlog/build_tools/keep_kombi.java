@@ -41,3 +41,20 @@
     private static String opt(org.dsi.ifc.global.CarViewOption o) {
         return o == null ? "(null)" : "(st" + o.state + ",r" + o.reason + ")";
     }
+
+    /** 0.7: range and long term consumption for the estimated fuel in the overlay. */
+    public void updateBCCurrentRange1(org.dsi.ifc.global.CarBCCurrentRange r, int validFlag) {
+        try {
+            VehLog.rangeNow(r, validFlag);
+        } catch (Throwable e) {
+            VehLog.lastError = "range: " + e;
+        }
+    }
+
+    public void updateBCLongTermAverageConsumption1(org.dsi.ifc.global.CarBCConsumption c, int validFlag) {
+        try {
+            VehLog.consNow(c, validFlag);
+        } catch (Throwable e) {
+            VehLog.lastError = "consumption: " + e;
+        }
+    }

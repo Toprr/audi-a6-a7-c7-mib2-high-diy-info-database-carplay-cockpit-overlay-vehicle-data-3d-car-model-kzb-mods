@@ -4,6 +4,11 @@ Goal: show speed and oil temperature as a small bar over the CarPlay map in the 
 anything that draws, we wanted to know **which values the MMI actually gets**. So we wrote VehLog, a small
 **read-only** logger inside the Java HMI.
 
+> **Update:** the cockpit overlay built on this (speed, consumption, fuel, quiet street label) now works in
+> the car. How to use it: **[docs/13](13-cockpit-overlay.md)**. Since 0.8, VehLog is no longer purely
+> read-only: its optional street filter (switch `street_blank.txt`) changes the street name the navigation
+> sends to the cluster while the CarPlay map is up. Vehicle values are still only read.
+
 > Tested on **one** car: Audi A6 Avant C7.5, `MHI2_ER_AU57x_K3663_1` (MU1425), together with mib-cluster-map
 > v1.2.6 and MIB2-Patcher JOKERBTN + TOUCHCURSOR. VehLog changes the Java HMI start (`lsd.sh` boot classpath).
 > A mistake there can stop the centre screen from starting. Full M.I.B. backup first, see [docs/00](00-safety.md).
@@ -86,22 +91,19 @@ What can be moved: CarPlay's own maneuver card. mib-cluster-map (v1.2.6) has the
 `/mnt/app/root/mibr-carplay111-nav.maneuverLayout` plus `/mnt/app/root/mibr-carplay111-nav-query.enabled`
 and read when the iPhone connects.
 
-## Speed overlay (work in progress)
+## Speed overlay
 
-A small "52 km/h" box drawn by mib-cluster-map's stream player over the CarPlay map in the cockpit
-(sources: [`tools/speedoverlay/`](../tools/speedoverlay/)):
+**Works in the car now**, together with a fuel box and the quiet street label: see
+**[docs/13](13-cockpit-overlay.md)** for what it does, the settings, install and what we learned.
+Sources: [`tools/speedoverlay/`](../tools/speedoverlay/).
 
-- VehLog writes the speedometer value to `/tmp/vehlog_speed`; the player reads it a few times per second
-  and draws nothing when the file is missing or older than 6 s, so the map is never affected.
 - Built with the open QNX 6.5 toolchain ([luka-dev/qnx65-armv7-toolchain](https://github.com/luka-dev/qnx65-armv7-toolchain))
   like mib-cluster-map. **Rebuilding the unchanged v1.2.6 player gave a byte-identical file** to the
   released one (sha1 `0e38137f...`), so the build is reproducible. The overlay adds 3 lines to
-  `opengl_gpu.cc` plus one header, no new libraries.
-- **First car test: no box.** The player started the overlay, but `/tmp/vehlog_speed` never existed:
-  VehLog 0.4 wrote a temp file and renamed it, which most likely does not work on the MMX's `/tmp`.
-  VehLog 0.5 writes the file directly (PC-tested); the next car test is pending.
-- Position is set in `/mnt/persist/speedoverlay.conf` (`pos=bl|br|tl|tr`, `left=`, `right=`, `top=`,
-  `bottom=` in pixels), default bottom left at x=200 so the rev counter does not cover it.
+  `opengl_gpu.cc` plus two headers, no new libraries.
+- On the way there: the first car test showed no box (a temp file renamed into `/tmp` never appeared, VehLog
+  now writes in place), the second showed it flickering (the player judged freshness by the file time, now
+  by a write counter). Details in docs/13.
 
 Building it on Windows needed a few workarounds, written down for the next person: clone the toolchain with
 `core.autocrlf=false` and feed `docker build` a `git archive` (Windows Git turns the toolchain's symlinks

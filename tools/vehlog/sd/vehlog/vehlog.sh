@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# VehLog 0.5: read-only logger for oil temperature, coolant temperature and speed
+# VehLog 0.9: logger for oil temperature, coolant temperature, speed and fuel
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425) only.
 #
 # Usage: vehlog.sh <command>
@@ -19,7 +19,7 @@
 #
 # For tests on a PC: VEHLOG_TEST_ROOT=<folder> runs it against copies, no mounts.
 
-VERSION="0.5"
+VERSION="0.9"
 MARKER="#VEHLOG"
 JAR_NAME="VEHLOG.jar"
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
