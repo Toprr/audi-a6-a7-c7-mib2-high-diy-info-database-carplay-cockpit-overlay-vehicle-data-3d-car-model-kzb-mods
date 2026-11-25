@@ -4,11 +4,6 @@ Everything we learned modding an **Audi A6 Avant C7.5 (2018)** with **MIB2 High*
 running `MHI2_ER_AU57x_K3663_1`, written down so you don't have to pay 100+ EUR to someone for things
 you can do yourself for free.
 
-**Search keywords:** Audi A6 A7 S6 S7 RS6 RS7 C7 C7.5 4G · MIB2 High · MHI2 · MMI 3G+ successor · virtual cockpit / FIS /
-cluster · CarPlay map in cluster · Android Auto map in cluster · 3D car model · car look · drive select car ·
-content.kzb · Kanzi KZB format · car menu icon · rear view camera in cluster · dmdt display manager · SWDL SD update ·
-speed in cockpit · fuel / consumption overlay · vehicle data DSI · CarPlay star button / joker · touchpad cursor CarPlay
-
 > [!CAUTION]
 > **This repository is meant as information: a write-up of what we learned, in the hope it helps others.
 > It is not a ready-made product and not a step-by-step guarantee.**
@@ -143,3 +138,34 @@ Our scripts and docs: GPL-3.0 (see [LICENSE](LICENSE)), compatible with the proj
 This is where our car is today, and it works. We will keep testing other things that might be useful and add
 them here when they work in the car. Corrections, ideas and findings from your own car are always welcome
 (issues / pull requests).
+
+## Keywords
+
+So people searching for these things find this page. Tested only on our A6 C7.5 (`K3663`); the other names
+are here because the same unit and software are used there too.
+
+**Cars:** Audi A6 C7 · A6 C7.5 facelift · A6 Avant · A6 allroad · S6 · RS6 · A7 Sportback · S7 · RS7 · 4G · 4G5 ·
+4G8 · 2015 · 2016 · 2017 · 2018
+
+**Unit and software:** MIB2 High · MIB 2 · MHI2 · MHI2_ER_AU57x_K3663_1 · K3663 · MU1425 · Harman · MMI Navigation plus ·
+MMI touch · QNX 6.5 · RCC · MMX · lsd.jxe · lsd.jar · J9 · OSGi · DSI · DSICarKombi · DSIKOMONavInfo · Java HMI
+
+**Tools:** M.I.B. More Incredible Bash · mib2-toolbox · green engineering menu (GEM) · red engineering menu ·
+SWDL SD update · metainfo2.txt · FinalScript · MIB2-Patcher · mib-cluster-map · NavActiveIgnore · jxe2jar ·
+QNX toolchain · SSH on the MMI · M.I.B. backup
+
+**Virtual cockpit:** Audi virtual cockpit · AVC · FIS · Kombi · instrument cluster · cluster map · KOMO ·
+CarPlay in the virtual cockpit · Apple CarPlay cluster · Android Auto in the virtual cockpit · Apple Maps /
+Google Maps / Waze in the cockpit · speed overlay · digital speed · fuel consumption · range · litres left in
+the tank · street name bar · CarPlay turn card · CarPlay safe area · steering wheel roller zoom
+
+**Car look:** 3D car model · car menu · Audi drive select car · car look · Kanzi · KZB · content.kzb · RS6 model ·
+paint colour · lowering · rims · brake calipers · black optics · badge · main menu car icon · boot animation · canim
+
+**More:** rear view camera in the cockpit · dmdt · display manager · star button / joker button skip · touchpad
+cursor in CarPlay · vehicle data catalog · oil temperature · retrofit · coding · mod · hack · DIY · free alternative
+
+**Deutsch:** CarPlay im Virtual Cockpit · CarPlay im Tacho · Navi im Kombiinstrument · Google Maps im Cockpit ·
+Geschwindigkeit im Cockpit · Verbrauch und Tankinhalt im Cockpit · Straßenname ausblenden · 3D Fahrzeugmodell
+ändern · Fahrzeugbild MMI ändern · Rückfahrkamera im Cockpit · Sternchentaste CarPlay · Touchpad CarPlay ·
+MMI Mod · MMI freischalten · nachrüsten · selber machen · kostenlos
