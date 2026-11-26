@@ -61,9 +61,23 @@ itself ("…"). Street names and the odometer are blurred on purpose.*
   second** (we measured at most 1.2 updates per second over whole minutes of driving). That is the fastest
   speed source the MMI has, so under hard acceleration the number steps about once a second.
 - **Fuel left** is an estimate: our car never sends the tank content in litres (`BCTankLevel1` is always
-  invalid), so VehLog computes `litres = range km × long term consumption / 100` from `BCCurrentRange1` and
-  `BCLongTermAverageConsumption1`. The cluster computes the range from the real tank level, but with its own
-  recent consumption, so expect roughly ±10 %. Whole litres only. A line stays empty when its value is invalid.
+  invalid). Up to VehLog 0.9 it was only `range km × long term consumption / 100` from `BCCurrentRange1` and
+  `BCLongTermAverageConsumption1`. But our logs showed that the car sends the range **once per start** and the
+  same number (570 km) for days, so the box froze. Since **VehLog 1.0** VehLog counts itself:
+  - start value: range × long term consumption from the car
+  - while driving, every 2 s: distance (speedometer speed minus 4 %, the speedometer reads high; the "real"
+    speed is never valid on our car) × short term consumption `BCShortTermAverageConsumption1` (long term
+    when there is no short term value). Example: 1 h at 100 on the speedometer = 96 km, at 8.0 l/100km 7.7 l
+  - a car value is used only when the range is a **new** number (the stale value after a start is ignored,
+    also across restarts), and only when it is **lower** (more exact) or **at least 5 l higher** (refuelled,
+    the range jumps right after refuelling). A value a little higher is ignored, so the number never goes up
+    while driving
+  - never more than 74 l (A6 C7 tank about 73 to 75 l), never below 0; saved in
+    `/mnt/persist/vehlog_fuel_state` at most once a minute, so it goes on after a restart
+
+  Expect a few percent off over a longer distance, mostly from the guessed speedometer factor. The very first
+  start value comes from the stale range and can be off until the first refuel. Whole litres only. A line
+  stays empty when its value is invalid. **Status:** 1.0 is tested on the PC, not yet in the car.
 - **Street label filter:** the navigation's `ClusterService` asks `DSIKOMOManager.getDSIKOMONavInfo()` for the
   cluster interface every time it sends a street. VehLog hands the manager a thin wrapper
   (`setDSIKOMONavInfo`, the same public call the navigation's own Activator uses). It passes **every** call

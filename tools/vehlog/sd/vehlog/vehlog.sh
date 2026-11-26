@@ -19,7 +19,7 @@
 #
 # For tests on a PC: VEHLOG_TEST_ROOT=<folder> runs it against copies, no mounts.
 
-VERSION="0.9"
+VERSION="1.0"
 MARKER="#VEHLOG"
 JAR_NAME="VEHLOG.jar"
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
@@ -329,6 +329,9 @@ do_collect() {
 	done
 	if [ -f "$PERSIST/vehlog_catalog.txt" ]; then
 		cp "$PERSIST/vehlog_catalog.txt" "$PKG/logs/catalog_$n.txt" && log "copied the catalog to vehlog/logs/catalog_$n.txt"
+	fi
+	if [ -f "$PERSIST/vehlog_listen.txt" ]; then
+		cp "$PERSIST/vehlog_listen.txt" "$PKG/logs/listen_$n.txt" && log "copied the BAP/ExLAP listen file to vehlog/logs/listen_$n.txt"
 	fi
 	do_status
 }

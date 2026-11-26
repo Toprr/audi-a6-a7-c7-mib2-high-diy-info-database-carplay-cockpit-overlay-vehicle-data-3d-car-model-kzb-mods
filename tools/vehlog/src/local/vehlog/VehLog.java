@@ -23,7 +23,8 @@ import org.osgi.framework.ServiceReference;
  * Java 1.2 level for the unit's J9: no StringBuilder, no boxing, no class literals.
  */
 public final class VehLog implements Runnable {
-    static final String VERSION = "0.9";
+    static final String VERSION = "1.0";
+    private static final long LISTEN_TRY_MS = 15L * 60L * 1000L;  // 1.0: look for the listen services this long
     private static final String FLAG_PENDING = "/mnt/persist/vehlog_pending";
     private static final String FLAG_LOADED = "/mnt/persist/vehlog_loaded";
     private static final String OFF = "/tmp/vehlog-off";
@@ -44,6 +45,7 @@ public final class VehLog implements Runnable {
     private static final int ATTR_BCOILTEMPERATUREVALUE = 64;
     private static final int ATTR_BCCURRENTRANGE1 = 8;
     private static final int ATTR_BCLONGTERMAVERAGECONSUMPTION1 = 14;
+    private static final int ATTR_BCSHORTTERMAVERAGECONSUMPTION1 = 11;   // 1.0: for counting fuel
     private static final int ATTR_DYNAMICVEHICLEINFOHIGHFREQUENT = 14;
 
     private static final Object LOCK = new Object();
@@ -96,6 +98,7 @@ public final class VehLog implements Runnable {
             long t0 = System.currentTimeMillis();
             sleep(FIRST_WAIT_MS);
             line("start VehLog " + VERSION);
+            Fuel.load();
             boolean kombi = false;
             boolean vehicle = false;
             boolean confirmed = false;
@@ -110,6 +113,8 @@ public final class VehLog implements Runnable {
                 if (new File(OFF).exists()) {
                     line("off switch found, stopping");
                     Catalog.write(true);
+                    Listen.shutdown();
+                    Fuel.save(System.currentTimeMillis(), true);
                     flush();
                     return;
                 }
@@ -125,7 +130,8 @@ public final class VehLog implements Runnable {
                         if (!kombi) {
                             kombi = subscribe(bc, DSI_KOMBI,
                                     new int[] {ATTR_BCVIEWOPTIONS, ATTR_BCOILTEMPERATURE, ATTR_BCCOOLANTTEMPERATURE, ATTR_BCOILTEMPERATUREVALUE,
-                                            ATTR_BCCURRENTRANGE1, ATTR_BCLONGTERMAVERAGECONSUMPTION1},
+                                            ATTR_BCCURRENTRANGE1, ATTR_BCLONGTERMAVERAGECONSUMPTION1,
+                                            ATTR_BCSHORTTERMAVERAGECONSUMPTION1},
                                     new KombiListener());
                         }
                         if (!vehicle) {
@@ -155,6 +161,11 @@ public final class VehLog implements Runnable {
                         streetStarted = StreetBlank.start(bc);
                     }
                 }
+                // 1.0: listen only (BAP, ExLAP service list, ExLAP domain state), looking for
+                // a source of the oil temperature. Before the boot guard confirm, like the catalog.
+                if (kombi && vehicle) {
+                    Listen.tick(Listen.needsContext() && now - t0 < LISTEN_TRY_MS ? bundleContext() : null, now);
+                }
                 Catalog.write(false);
                 String err = lastError;
                 if (err != null) {
@@ -163,7 +174,7 @@ public final class VehLog implements Runnable {
                 }
                 String values = "oil=" + oil + " coolant=" + coolant + " speed=" + speed
                         + " realSpeed=" + realSpeed + " rpm=" + rpm + " | " + oilView + " bcOil=" + oilSetting
-                        + " | range=" + rangeKm + " cons=" + consTenths + " fuelL=" + fuelLitres();
+                        + " | range=" + rangeKm + " cons=" + consTenths + " short=" + consShortTenths + " fuelL=" + fuelLitres();
                 if (!values.equals(last) || now - lastLine >= 30000L) {
                     last = values;
                     lastLine = now;
@@ -173,9 +184,15 @@ public final class VehLog implements Runnable {
                     lastStats = now;
                     line("updates so far: oil=" + oilCount + " coolant=" + coolantCount + " dyn=" + dynCount + " view=" + viewCount);
                     line(StreetBlank.stats());
+                    line(Listen.stats());
+                    line(Fuel.stats());
                     flush();
                 }
                 writeSpeed();
+                // 1.0: fuel counted by VehLog (see Fuel), car values only when they make sense
+                Fuel.car(rangeKm, consTenths);
+                Fuel.step(now, speedKmh, consShortTenths, consTenths);
+                Fuel.save(now, false);
                 writeFuel();
                 if (pending.length() > 2048) {
                     flush();
@@ -357,7 +374,7 @@ public final class VehLog implements Runnable {
     // 0.3: speed for the overlay. -1 = no valid value. Written on every change
     // (from the DSI thread, a few bytes to /tmp, which is RAM) and every 2 s from
     // the logger thread, so the player can tell a fresh value from an old one.
-    private static volatile int speedKmh = -1;
+    static volatile int speedKmh = -1;
     private static int speedWritten = -2;
     private static final Object SPEED_LOCK = new Object();
 
@@ -415,6 +432,7 @@ public final class VehLog implements Runnable {
     // the long term consumption: litres = range km * l/100km / 100. -1 = unknown.
     private static volatile int rangeKm = -1;
     private static volatile int consTenths = -1;
+    private static volatile int consShortTenths = -1;
     private static boolean fuelOk;
     private static boolean fuelErr;
 
@@ -428,22 +446,24 @@ public final class VehLog implements Runnable {
     }
 
     static void consNow(org.dsi.ifc.global.CarBCConsumption c, int validFlag) {
-        int v = -1;
+        consTenths = tenths(c, validFlag);
+    }
+
+    /** 1.0: short term average (since the start), used to count the fuel down. */
+    static void shortNow(org.dsi.ifc.global.CarBCConsumption c, int validFlag) {
+        consShortTenths = tenths(c, validFlag);
+    }
+
+    private static int tenths(org.dsi.ifc.global.CarBCConsumption c, int validFlag) {
         if (c != null && validFlag == 1 && c.state == 1 && c.consumptionUnit == 0
                 && c.consumptionValue >= 1f && c.consumptionValue <= 50f) {
-            v = Math.round(c.consumptionValue * 10f);
+            return Math.round(c.consumptionValue * 10f);
         }
-        consTenths = v;
+        return -1;
     }
 
     static int fuelLitres() {
-        int r = rangeKm;
-        int c = consTenths;
-        if (r < 0 || c < 0) {
-            return -1;
-        }
-        int l = (r * c + 500) / 1000;
-        return l <= 150 ? l : -1;
+        return Fuel.litres();
     }
 
     /** "<consumption in tenths> <litres>", -1 for unknown. Rewritten every 2 s as a heartbeat. */

@@ -63,6 +63,15 @@ public class KombiListener implements org.dsi.ifc.carkombi.DSICarKombiListener {
         }
     }
 
+    /** 1.0: short term average consumption, to count the fuel down while driving. */
+    public void updateBCShortTermAverageConsumption1(org.dsi.ifc.global.CarBCConsumption c, int validFlag) {
+        try {
+            VehLog.shortNow(c, validFlag);
+        } catch (Throwable e) {
+            VehLog.lastError = "short consumption: " + e;
+        }
+    }
+
     public void updateSIAViewOptions(org.dsi.ifc.carkombi.SIAViewOptions a0, int a1) { }
     public void updateSIAServiceData(org.dsi.ifc.carkombi.SIAServiceData a0, int a1) { }
     public void updateSIAOilInspection(org.dsi.ifc.carkombi.SIAOilInspection a0, int a1) { }
@@ -80,7 +89,6 @@ public class KombiListener implements org.dsi.ifc.carkombi.DSICarKombiListener {
     public void updateBCCurrentConsumption2(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
     public void updateBCCurrentRange2(org.dsi.ifc.global.CarBCCurrentRange a0, int a1) { }
     public void updateBCTotalDistance(org.dsi.ifc.global.CarBCDistance a0, int a1) { }
-    public void updateBCShortTermAverageConsumption1(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
     public void updateBCShortTermAverageConsumption2(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }
     public void updateBCShortTermGeneral(org.dsi.ifc.carkombi.BCShortTermGeneralData a0, int a1) { }
     public void updateBCLongTermAverageConsumption2(org.dsi.ifc.global.CarBCConsumption a0, int a1) { }

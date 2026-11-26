@@ -58,3 +58,12 @@
             VehLog.lastError = "consumption: " + e;
         }
     }
+
+    /** 1.0: short term average consumption, to count the fuel down while driving. */
+    public void updateBCShortTermAverageConsumption1(org.dsi.ifc.global.CarBCConsumption c, int validFlag) {
+        try {
+            VehLog.shortNow(c, validFlag);
+        } catch (Throwable e) {
+            VehLog.lastError = "short consumption: " + e;
+        }
+    }

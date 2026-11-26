@@ -125,6 +125,20 @@ if [ -f "$VOLUME/vehlog/street_blank.txt" ]; then
 		*) note "== street_blank.txt: '$sb' not understood (on or off)" ;;
 	esac
 fi
+# 3f. Listen only (BAP, ExLAP), looking for the oil temperature: vehlog/listen.txt = on|off
+#     (VehLog 1.0; off = /mnt/persist/vehlog_listen_off, BAP listening stops within 2 s)
+if [ -f "$VOLUME/vehlog/listen.txt" ]; then
+	li=$(word_of "$VOLUME/vehlog/listen.txt")
+	case "$li" in
+		on|on?) li=on ;;
+		off|off?) li=off ;;
+	esac
+	case "$li" in
+		on) rm -f /net/mmx/mnt/persist/vehlog_listen_off && note "== listen (BAP, ExLAP): on" ;;
+		off) : > /net/mmx/mnt/persist/vehlog_listen_off 2> /dev/null && note "== listen (BAP, ExLAP): off" ;;
+		*) note "== listen.txt: '$li' not understood (on or off)" ;;
+	esac
+fi
 # 3e. CarPlay safe area: vehlog/carplay_safearea.txt = pixels to raise its bottom edge
 #     (0 = mib-cluster-map's original). mib-cluster-map's file
 #     /mnt/app/root/mibr-carplay111-safearea.conf (x= y= w= h=, read when the iPhone

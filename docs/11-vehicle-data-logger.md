@@ -134,6 +134,15 @@ with "Value too large for defined data type").
   `lsd.sh`, writes the new file to a temp copy and only replaces `lsd.sh` if every line that is not ours is
   byte-identical to before. Uninstall restores `lsd.sh` byte for byte (tested on a copy of the real file).
 
+- **BAP and ExLAP listener (1.0, read-only):** to look for the oil temperature outside `DSICarKombi`,
+  VehLog listens to `DSIBAP`, `DSIExlap` and the ExLAP domain status of `DSIStartup`, but **only if the HMI
+  already registered that service**, with a proxy listener and `setNotification` only (never a request, never
+  `startDSIService`, which would start the ExLAP domain). It keeps count, first and newest value per key (max
+  300 keys, text at most once a second) and writes `/mnt/persist/vehlog_listen.txt` for 60 min after the start,
+  then it stops listening. On our unit only the ENI and eCall apps use BAP and no HMI app uses ExLAP, so oil
+  temperature from there is unlikely, but this shows it for sure. Off: `listen.txt` = `off` on the SD card
+  (or `/mnt/persist/vehlog_listen_off`). Not yet tested in the car.
+
 To convert `lsd.jxe` to a jar on the PC we used [luka-dev/jxe2jar](https://github.com/luka-dev/jxe2jar)
 (only its `src/` folder). The converted `lsd.jar` is Audi/Harman code: **keep it on your PC, never publish it**.
 
