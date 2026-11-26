@@ -63,6 +63,18 @@ the icon, the star button skip and the touchpad cursor: see **[docs/14: our comp
 | Rear camera in the cockpit | ❌ not with scripts (as far as we know) | The switching works, but the camera seems to be a hardware video layer the cluster can't see. Probably needs a native capture program. Full research: [docs/07](docs/07-display-manager-and-rear-camera.md) |
 | Satellite map in the cockpit, sharper CarPlay, touch screen, two CarPlay screens | ❌ not possible as far as we know | Most likely hardware / Apple limits, see [docs/08](docs/08-limits-faq.md) |
 
+## No experience? Use a good AI assistant
+
+You don't need to be a developer to rebuild what is shared here. Everything in this repository was worked out
+together with an AI assistant, and the docs are written so an AI can follow them too. With a capable assistant
+(we used **Claude Code with Claude Opus 5.5 on medium effort**), let it **read the whole repository**, then
+tell it in your own words what you want (for example "the CarPlay map with the speed box in my cockpit" or
+"the RS6 model in my car menu"). You get a step-by-step guide for your case, including the building on the PC.
+What you need besides that: an **SD card** for M.I.B. and a **PC** (Windows works) for building.
+
+Still: an AI can make mistakes too. Make the full M.I.B. backup first, let it explain each step before you do
+it, and only continue when the step makes sense to you (see the warning at the top and [docs/00](docs/00-safety.md)).
+
 ## Contents
 
 - [docs/00-safety.md](docs/00-safety.md): how not to brick your unit, backups, rollback
