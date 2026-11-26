@@ -4,6 +4,10 @@ Everything we learned modding an **Audi A6 Avant C7.5 (2018)** with **MIB2 High*
 running `MHI2_ER_AU57x_K3663_1`, written down so you don't have to pay 100+ EUR to someone for things
 you can do yourself for free.
 
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support%20this%20repo-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/felixtop)
+Everything here is free and stays free. If this repo saved you money, kept you away from a scam or you just
+value the information, you can support it at **[buymeacoffee.com/felixtop](https://buymeacoffee.com/felixtop)**. Thank you!
+
 > [!CAUTION]
 > **This repository is meant as information: a write-up of what we learned, in the hope it helps others.
 > It is not a ready-made product and not a step-by-step guarantee.**
