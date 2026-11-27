@@ -53,6 +53,54 @@ rearm_patch() {
 rearm_patch TOUCHCURSOR touchcursor
 rearm_patch JOKERBTN jokerbtn
 
+# 1b. TEL2ACP (MIB2-Patcher: the TEL key opens CarPlay): vehlog/tel2acp.txt = on|off
+#     on:  install it with MIB2-Patcher when lsd.sh has no TEL2ACP block yet, re-arm it
+#          when its boot guard switched it off, otherwise nothing
+#     off: uninstall it with MIB2-Patcher when it is installed, otherwise nothing
+#     Active after the MMI restart. MIB2-Patcher's own log: mib2-patcher/logs/TEL2ACP
+if [ -f "$VOLUME/vehlog/tel2acp.txt" ]; then
+	tw=$(word_of "$VOLUME/vehlog/tel2acp.txt")
+	case "$tw" in
+		on|on?) tw=on ;;
+		off|off?) tw=off ;;
+	esac
+	tel_in=0
+	grep -q '#TEL2ACP' /net/mmx/mnt/app/eso/hmi/lsd/lsd.sh 2> /dev/null && tel_in=1
+	case "$tw" in
+		on)
+			if [ $tel_in = 1 ]; then
+				rearm_patch TEL2ACP tel2acp
+			elif [ -f "$patcher_sh" ]; then
+				note "== TEL2ACP: installing with MIB2-Patcher"
+				/bin/sh "$patcher_sh" TEL2ACP install < /dev/null
+				if grep -q '#TEL2ACP' /net/mmx/mnt/app/eso/hmi/lsd/lsd.sh 2> /dev/null; then
+					note "TEL2ACP: installed, active after the MMI restart"
+				else
+					note "TEL2ACP: not installed, see mib2-patcher/logs/TEL2ACP"
+				fi
+			else
+				note "== TEL2ACP: $patcher_sh not found, nothing done"
+			fi
+			;;
+		off)
+			if [ $tel_in = 0 ]; then
+				note "== TEL2ACP: off, not installed, nothing to do"
+			elif [ -f "$patcher_sh" ]; then
+				note "== TEL2ACP: off, uninstalling with MIB2-Patcher"
+				/bin/sh "$patcher_sh" TEL2ACP uninstall < /dev/null
+				if grep -q '#TEL2ACP' /net/mmx/mnt/app/eso/hmi/lsd/lsd.sh 2> /dev/null; then
+					note "TEL2ACP: still in lsd.sh, see mib2-patcher/logs/TEL2ACP"
+				else
+					note "TEL2ACP: uninstalled, gone after the MMI restart"
+				fi
+			else
+				note "== TEL2ACP: $patcher_sh not found, nothing done"
+			fi
+			;;
+		*) note "== tel2acp.txt: '$tw' not understood (on or off)" ;;
+	esac
+fi
+
 vehlog_sh="$VOLUME/vehlog/vehlog.sh"
 if [ ! -f "$vehlog_sh" ]; then
 	echo "$vehlog_sh not found, copy the vehlog folder to the SD card"

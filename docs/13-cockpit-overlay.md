@@ -62,22 +62,29 @@ itself ("…"). Street names and the odometer are blurred on purpose.*
   speed source the MMI has, so under hard acceleration the number steps about once a second.
 - **Fuel left** is an estimate: our car never sends the tank content in litres (`BCTankLevel1` is always
   invalid). Up to VehLog 0.9 it was only `range km × long term consumption / 100` from `BCCurrentRange1` and
-  `BCLongTermAverageConsumption1`. But our logs showed that the car sends the range **once per start** and the
-  same number (570 km) for days, so the box froze. Since **VehLog 1.0** VehLog counts itself:
-  - start value: range × long term consumption from the car
-  - while driving, every 2 s: distance (speedometer speed minus 4 %, the speedometer reads high; the "real"
-    speed is never valid on our car) × short term consumption `BCShortTermAverageConsumption1` (long term
-    when there is no short term value). Example: 1 h at 100 on the speedometer = 96 km, at 8.0 l/100km 7.7 l
-  - a car value is used only when the range is a **new** number (the stale value after a start is ignored,
-    also across restarts), and only when it is **lower** (more exact) or **at least 5 l higher** (refuelled,
-    the range jumps right after refuelling). A value a little higher is ignored, so the number never goes up
-    while driving
-  - never more than 74 l (A6 C7 tank about 73 to 75 l), never below 0; saved in
+  `BCLongTermAverageConsumption1`. VehLog 1.0 started counting itself, because the short trips in our first
+  logs looked as if the range never changed. Longer drives showed the real behaviour: the car sends the range
+  in **10 km steps** while driving, sometimes also 10 km up and down again (380, 390, 380), and after a start
+  it sends the last number once more. Since **VehLog 1.1** there are two values:
+  - **behind the scenes** a value that takes every new range number from the car (range × long term
+    consumption) and counts down in between, every 2 s: distance (speedometer speed minus 4 %, the
+    speedometer reads high; the "real" speed is never valid on our car) × short term consumption
+    `BCShortTermAverageConsumption1` (long term when there is no short term value). Example: 1 h at 100 on
+    the speedometer = 96 km, at 8.0 l/100km 7.7 l
+  - **shown** in the box: follows that value, but **never goes up**. When the car's value is a little higher
+    than what is shown, the box holds until the value behind it has counted down below it. Only a car value
+    **at least 5 l higher** than shown (refuelled, the range jumps right after refuelling) makes it go up
+  - a range number the same as the last one seen changes nothing (the repeated value after a start is
+    ignored, also across restarts)
+  - never more than 74 l (A6 C7 tank about 73 to 75 l), never below 0; both values are saved in
     `/mnt/persist/vehlog_fuel_state` at most once a minute, so it goes on after a restart
 
-  Expect a few percent off over a longer distance, mostly from the guessed speedometer factor. The very first
-  start value comes from the stale range and can be off until the first refuel. Whole litres only. A line
-  stays empty when its value is invalid. **Status:** 1.0 is tested on the PC, not yet in the car.
+  1.0 only took lower car values and ignored a little higher ones, so over about 90 km it ended 1.3 l below
+  the car. In the 1.1 test drive the range went 380, 370, 360: at 370 the car's value (32.2 l) was higher than
+  shown (31.5 l), the box held, at 360 (31.3 l) it followed the car again, and it never went up. Whole litres
+  only. A line stays empty when its value is invalid. The consumption in the box is the **long term** value,
+  which the car sends once per start, so it stays the same for days (8.7 on our car).
+  **Status:** 1.1 is tested in the car.
 - **Street label filter:** the navigation's `ClusterService` asks `DSIKOMOManager.getDSIKOMONavInfo()` for the
   cluster interface every time it sends a street. VehLog hands the manager a thin wrapper
   (`setDSIKOMONavInfo`, the same public call the navigation's own Activator uses). It passes **every** call

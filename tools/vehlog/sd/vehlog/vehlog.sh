@@ -19,7 +19,7 @@
 #
 # For tests on a PC: VEHLOG_TEST_ROOT=<folder> runs it against copies, no mounts.
 
-VERSION="1.0"
+VERSION="1.1"
 MARKER="#VEHLOG"
 JAR_NAME="VEHLOG.jar"
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"

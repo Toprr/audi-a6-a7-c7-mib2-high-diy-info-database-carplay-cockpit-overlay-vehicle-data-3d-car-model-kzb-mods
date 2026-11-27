@@ -23,7 +23,7 @@ import org.osgi.framework.ServiceReference;
  * Java 1.2 level for the unit's J9: no StringBuilder, no boxing, no class literals.
  */
 public final class VehLog implements Runnable {
-    static final String VERSION = "1.0";
+    static final String VERSION = "1.1";
     private static final long LISTEN_TRY_MS = 15L * 60L * 1000L;  // 1.0: look for the listen services this long
     private static final String FLAG_PENDING = "/mnt/persist/vehlog_pending";
     private static final String FLAG_LOADED = "/mnt/persist/vehlog_loaded";

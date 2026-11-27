@@ -5,22 +5,22 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 
 /**
- * VehLog 1.0: fuel left for the overlay's right box, counted by VehLog itself.
+ * VehLog 1.1: fuel left for the overlay's right box.
  *
- * The car does not send the tank content (BCTankLevel is always invalid), and in our logs
- * the range came only once per start and was the same (570 km) for days, so range x
- * consumption alone stays frozen. So:
- *  - Start value and corrections come from the car: range km x long term l/100km.
- *  - While driving, fuel used is counted down: distance (speedometer speed, minus
- *    SPEEDO_FACTOR for the speedometer reading high) x short term l/100km (long term
+ * The car does not send the tank content (BCTankLevel is always invalid). It sends the range,
+ * in 10 km steps while driving, and once per start the last number again. So two values:
+ *  - ml: follows the car. Every new range number from the car sets it to range km x long
+ *    term l/100km. Between two car values it is counted down: distance (speedometer speed,
+ *    minus SPEEDO_FACTOR for the speedometer reading high) x short term l/100km (long term
  *    when there is no short term value).
- *  - A car value is used only when the range is a new number (not the same as the last
- *    one we saw, also across restarts, so a stale value after a start changes nothing), and
- *    only when it is lower (more exact), or at least REFUEL_ML higher (refuelled). A value
- *    a little higher is ignored, so the number never goes up while driving.
+ *  - shown: what the overlay shows. It follows ml, but never goes up: when the car's value
+ *    is a little higher than shown, shown stays until ml has counted down to it. Only a car
+ *    value at least REFUEL_ML higher than shown (refuelled) makes it go up.
+ *  - A range number the same as the last one we saw (also across restarts) changes nothing,
+ *    so the stale value after a start is ignored.
  *  - Never more than TANK_ML (A6 C7 tank about 73 to 75 l), never below 0.
- *  - Saved in /mnt/persist/vehlog_fuel_state ("<ml> <last car range>") at most once a
- *    minute, and only when it changed, so it goes on after a restart.
+ *  - Saved in /mnt/persist/vehlog_fuel_state ("<shown ml> <last car range> <ml>") at most
+ *    once a minute, and only when it changed, so it goes on after a restart.
  */
 final class Fuel {
     static final String STATE = "/mnt/persist/vehlog_fuel_state";
@@ -31,10 +31,12 @@ final class Fuel {
     static final long MAX_STEP_MS = 10000L;
     private static final long SAVE_MS = 60000L;
 
-    static double ml = -1;          // estimate in millilitres, -1 = unknown
+    static double ml = -1;          // follows the car, counted down in between, -1 = unknown
+    static double shown = -1;       // shown in the overlay, never goes up except after refuelling
     static int carRange = -1;       // the last range number seen from the car
     private static long lastStep;
     private static long lastSave;
+    private static long savedShown = -2;
     private static long savedMl = -2;
     private static int savedRange = -2;
     static double drivenKm;
@@ -54,15 +56,22 @@ final class Fuel {
             } finally {
                 in.close();
             }
+            // "<shown> <range> <ml>", 1.0 wrote only "<shown> <range>"
             int sp = s.indexOf(' ');
             int m = Integer.parseInt(sp > 0 ? s.substring(0, sp) : s);
-            int r = sp > 0 ? Integer.parseInt(s.substring(sp + 1).trim()) : -1;
-            if (m >= 0 && m <= TANK_ML && r >= -1 && r <= 3000) {
-                ml = m;
+            String rest = sp > 0 ? s.substring(sp + 1).trim() : "";
+            int sp2 = rest.indexOf(' ');
+            int r = rest.length() == 0 ? -1 : Integer.parseInt(sp2 > 0 ? rest.substring(0, sp2) : rest);
+            int f = sp2 > 0 ? Integer.parseInt(rest.substring(sp2 + 1).trim()) : m;
+            if (m >= 0 && m <= TANK_ML && f >= 0 && f <= TANK_ML && r >= -1 && r <= 3000) {
+                shown = m;
+                ml = f;
                 carRange = r;
-                savedMl = m;
+                savedShown = m;
+                savedMl = f;
                 savedRange = r;
-                VehLog.line("fuel: saved estimate " + litresText() + " l, last car range " + r + " km");
+                VehLog.line("fuel: saved estimate " + litresText() + " l (following the car " + text(ml)
+                        + " l), last car range " + r + " km");
             } else {
                 VehLog.line("fuel: saved state not plausible, ignored: " + s);
             }
@@ -85,18 +94,23 @@ final class Fuel {
             carMl = TANK_ML;
         }
         String car = "car " + range + " km x " + (consLong / 10) + "." + (consLong % 10) + " l = "
-                + (carMl / 1000) + "." + ((carMl % 1000) / 100) + " l (range before " + prev + ")";
-        if (ml < 0) {
-            ml = carMl;
+                + text(carMl) + " l (range before " + prev + ")";
+        if (shown < 0 || ml < 0) {
             VehLog.line("fuel: start value from the " + car);
-        } else if (carMl >= ml + REFUEL_ML) {
+            ml = carMl;
+            shown = carMl;
+        } else if (carMl >= shown + REFUEL_ML) {
             VehLog.line("fuel: refuelled, " + litresText() + " l -> " + car);
             ml = carMl;
-        } else if (carMl < ml) {
-            VehLog.line("fuel: lower value from the " + car + ", was " + litresText() + " l");
+            shown = carMl;
+        } else if (carMl <= shown) {
+            VehLog.line("fuel: " + car + ", was " + litresText() + " l (counted " + text(ml) + ")");
             ml = carMl;
+            shown = carMl;
         } else {
-            VehLog.line("fuel: " + car + " ignored, it would go up (" + litresText() + " l kept)");
+            VehLog.line("fuel: " + car + ", higher than shown " + litresText() + " l (counted " + text(ml)
+                    + "): following the car, shown stays until it is counted down to it");
+            ml = carMl;
         }
     }
 
@@ -104,7 +118,7 @@ final class Fuel {
     static void step(long now, int speedKmh, int consShort, int consLong) {
         long dt = lastStep == 0L ? 0L : now - lastStep;
         lastStep = now;
-        if (ml < 0 || dt <= 0L || dt > MAX_STEP_MS || speedKmh <= 0) {
+        if (ml < 0 || shown < 0 || dt <= 0L || dt > MAX_STEP_MS || speedKmh <= 0) {
             return;
         }
         int c = consShort > 0 ? consShort : consLong;
@@ -119,11 +133,14 @@ final class Fuel {
         if (ml < 0) {
             ml = 0;
         }
+        if (ml < shown) {
+            shown = ml;
+        }
     }
 
     /** Whole litres for the overlay, -1 = unknown. */
     static int litres() {
-        double m = ml;
+        double m = shown;
         if (m < 0) {
             return -1;
         }
@@ -132,7 +149,10 @@ final class Fuel {
     }
 
     static String litresText() {
-        double m = ml;
+        return text(shown);
+    }
+
+    private static String text(double m) {
         if (m < 0) {
             return "?";
         }
@@ -143,24 +163,26 @@ final class Fuel {
     static String stats() {
         long km = Math.round(drivenKm * 10.0);
         long l = Math.round(usedMl / 100.0);
-        return "fuel: " + litresText() + " l, counted this start " + (km / 10) + "." + (km % 10) + " km and "
-                + (l / 10) + "." + (l % 10) + " l, last car range " + carRange;
+        return "fuel: " + litresText() + " l shown, " + text(ml) + " l following the car, counted this start "
+                + (km / 10) + "." + (km % 10) + " km and " + (l / 10) + "." + (l % 10) + " l, last car range "
+                + carRange;
     }
 
     /** At most once a minute (always when force), only when something changed. */
     static void save(long now, boolean force) {
-        if (ml < 0 || (!force && now - lastSave < SAVE_MS)) {
+        if (shown < 0 || ml < 0 || (!force && now - lastSave < SAVE_MS)) {
             return;
         }
+        long s = Math.round(shown);
         long m = Math.round(ml);
-        if (Math.abs(m - savedMl) < 50L && carRange == savedRange) {
+        if (Math.abs(s - savedShown) < 50L && Math.abs(m - savedMl) < 50L && carRange == savedRange) {
             return;
         }
         lastSave = now;
         try {
             FileOutputStream out = new FileOutputStream(TMP);
             try {
-                out.write((m + " " + carRange + "\n").getBytes("ISO-8859-1"));
+                out.write((s + " " + carRange + " " + m + "\n").getBytes("ISO-8859-1"));
             } finally {
                 out.close();
             }
@@ -169,6 +191,7 @@ final class Fuel {
                 f.delete();
                 new File(TMP).renameTo(f);
             }
+            savedShown = s;
             savedMl = m;
             savedRange = carRange;
         } catch (Throwable t) {

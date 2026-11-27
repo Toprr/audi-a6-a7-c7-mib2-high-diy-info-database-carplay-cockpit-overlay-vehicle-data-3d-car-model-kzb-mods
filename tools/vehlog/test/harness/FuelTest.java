@@ -3,8 +3,8 @@ import java.lang.reflect.*;
 import java.io.*;
 import org.dsi.ifc.global.*;
 /**
- * PC test of the fuel estimate (VehLog 1.0, class Fuel): start value from the car, stale
- * values ignored, counted down while driving, never up except after refuelling, 74 l
+ * PC test of the fuel estimate (VehLog 1.1, class Fuel): start value from the car, repeated
+ * values ignored, follows the car, counted down while driving, shown never up except after refuelling, 74 l
  * cap, saved and loaded across restarts, and /tmp/vehlog_fuel for the overlay.
  */
 public class FuelTest {
@@ -19,7 +19,8 @@ public class FuelTest {
     static void set(String n, Object val) throws Exception { Field x = f.getDeclaredField(n); x.setAccessible(true); x.set(null, val); }
     static Object get(String n) throws Exception { Field x = f.getDeclaredField(n); x.setAccessible(true); return x.get(null); }
     static void reset() throws Exception {
-        set("ml", -1.0); set("carRange", -1); set("lastStep", 0L); set("lastSave", 0L); set("savedMl", -2L); set("savedRange", -2);
+        set("ml", -1.0); set("shown", -1.0); set("carRange", -1); set("lastStep", 0L); set("lastSave", 0L);
+        set("savedShown", -2L); set("savedMl", -2L); set("savedRange", -2);
         set("drivenKm", 0.0); set("usedMl", 0.0);
     }
     static int litres() throws Exception { return (Integer) call(f, "litres"); }
@@ -72,7 +73,37 @@ public class FuelTest {
         car(400, 87);                        // 34.8 l
         expect("car value lower: taken", lt(), "34.8");
         car(410, 87);                        // 35.7 l
-        expect("then a little higher again: ignored", lt(), "34.8");
+        expect("then a little higher again: shown stays", lt(), "34.8");
+        expect("  but the value behind it follows the car", Math.round((Double) get("ml")), 35670L);
+        t = drive(t, 10, 60, 80, 87);        // 9.6 km x 8.0 = 0.77 l: 35.67 -> 34.90, still above 34.8
+        expect("  counted down, still above what is shown: shown stays", lt(), "34.8");
+        t = drive(t, 5, 60, 80, 87);         // 4.8 km x 8.0 = 0.38 l: 34.90 -> 34.52
+        expect("  counted below what was shown: shown follows again", lt(), "34.5");
+        car(400, 87);                        // 34.8 l, a little higher than shown
+        expect("car value again a little higher: shown stays", lt(), "34.5");
+
+        // real drive from 27 Nov: the car's range goes 390 -> 380 -> 390 -> 380, the shown
+        // value must end close to the car (380 km x 8.7 = 33.06 l), not below it
+        reset(); car(390, 87); t = 1000000L; call(f, "step", t, 50, 90, 87);
+        t = drive(t, 12, 50, 90, 87);        // 9.6 km x 9.0 = 0.86 l: 33.93 -> 33.07
+        car(380, 87);                        // 33.06 l, lower: taken
+        expect("drive: range 380", lt(), "33.1");
+        t = drive(t, 5, 50, 90, 87);         // 4 km x 9.0 = 0.36 l -> 32.70
+        car(390, 87);                        // 33.93 l, a little higher
+        expect("drive: range up to 390, shown stays", lt(), "32.7");
+        t = drive(t, 10, 50, 90, 87);        // 8 km x 9.0 = 0.72 l: 33.93 -> 33.21
+        car(380, 87);                        // 33.06 l, still above shown
+        expect("drive: range back to 380, shown stays", lt(), "32.7");
+        t = drive(t, 3, 50, 90, 87);         // 2.4 km x 9.0 = 0.22 l: 33.06 -> 32.84
+        expect("drive: still held", lt(), "32.7");
+        t = drive(t, 3, 50, 90, 87);         // -> 32.63
+        expect("drive: then follows the car again", lt(), "32.6");
+        reset(); car(420, 87); t = 1000000L; call(f, "step", t, 100, 80, 87);
+        t = drive(t, 60, 100, 80, 87);       // 36.54 l - 7.68 = 28.86
+        car(330, 87);                        // 28.71 l
+        expect("a normal lower value is not a refuel", lt(), "28.7");
+        car(400, 87);                        // 34.8 l = shown + 6.1
+        expect("5 l or more above shown: refuelled", lt(), "34.8");
 
         car(850, 87);                        // 73.95 l, refuelled
         expect("refuelled (range jumps to 850): taken", lt(), "74.0");
@@ -120,7 +151,24 @@ public class FuelTest {
         expect("after restart: last car range kept", get("carRange"), 570);
         car(570, 87);
         expect("after restart the car sends the old 570 again: ignored", lt(), before);
-        FileOutputStream o = new FileOutputStream(state); o.write("99999 570\n".getBytes()); o.close();
+        reset(); car(570, 87); drive(1000000L, 15, 60, 90, 87); car(560, 87);   // held: shown below the car
+        String hs = lt(); long hm = Math.round((Double) get("ml"));
+        check(hm > Math.round((Double) get("shown")), "held state before the restart");
+        call(f, "save", 5000000L, true);
+        reset(); call(f, "load");
+        expect("after restart while held: shown kept", lt(), hs);
+        expect("after restart while held: value behind it kept", Math.round((Double) get("ml")), hm);
+        FileOutputStream o = new FileOutputStream(state); o.write("31700 380\n".getBytes()); o.close();
+        reset(); call(f, "load");
+        expect("state file from 1.0 (two numbers): shown", lt(), "31.7");
+        expect("state file from 1.0: value behind it the same", Math.round((Double) get("ml")), 31700L);
+        expect("state file from 1.0: car range", get("carRange"), 380);
+        car(380, 87);
+        expect("state file from 1.0, car sends 380 again: ignored", lt(), "31.7");
+        o = new FileOutputStream(state); o.write("31700 380 99999\n".getBytes()); o.close();
+        reset(); call(f, "load");
+        expect("state file with a third number over 74 l: ignored", litres(), -1);
+        o = new FileOutputStream(state); o.write("99999 570\n".getBytes()); o.close();
         reset(); call(f, "load");
         expect("state file with more than 74 l: ignored", litres(), -1);
         o = new FileOutputStream(state); o.write("abc".getBytes()); o.close();
